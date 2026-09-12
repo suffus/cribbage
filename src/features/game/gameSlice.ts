@@ -1,5 +1,4 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { RootState } from '../../app/store';
 import { GameStage } from '../../app/game'
 import { Suit, Rank } from '../../app/entities'
 import { thePlayer } from '../../app/gamePlayer'
@@ -61,27 +60,11 @@ export const gameSlice = createSlice({
   reducers: {
     // Use the PayloadAction type to declare the contents of `action.payload`
     userPlay: (state : GamePlayingState, action: PayloadAction<UserGamePlay>) => {
-      //console.log( "In reducer", action.payload )
       const updates = thePlayer.playAction( state, action.payload )
       return {...state, ...updates}
     },
-    updateGameState: (state, update: PayloadAction<GamePlayingState>) => {
-      return {...state, ...update}
-    },
   },
-  // extraReducers: ( builder ) => {
-  //   builder
-  //     .addCase(playGameThunk.pending, (state) => {
-  //       state.status = 'loading';
-  //     })
-  //     .addCase(playGameThunk.fulfilled, (state, action) => {
-  //       state.status = 'idle';
-  //       state.actions = action.payload;
-  //     });
-  // },
-
 });
 
-export const { userPlay, updateGameState } = gameSlice.actions
-export const selectState = (state: RootState) => state.game;
+export const { userPlay } = gameSlice.actions
 export default gameSlice.reducer

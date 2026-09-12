@@ -52,7 +52,7 @@ class Card {
   public toString() : string {
     return `${this.suit}${this.rank}`
   }
-  public toObject() : Object {
+  public toObject() : object {
     return {suit: this.suit, rank: this.rank}
   }
 }
@@ -75,8 +75,8 @@ class StdDeck implements Deck {
   }
   buildDeck() : void {
     this.deck = new Array<Card>(0)
-    for( let suit of ["hearts","diamonds","spades","clubs"] ) {
-      for( let rank of Object.keys(rank_map) ) {
+    for( const suit of ["hearts","diamonds","spades","clubs"] ) {
+      for( const rank of Object.keys(rank_map) ) {
         this.deck.push( new Card( suit as Suit, parseInt(rank,10) as Rank ) )
       }
     }
@@ -90,7 +90,7 @@ class StdDeck implements Deck {
   }
   shuffle( ) : Deck {
     // this.buildDeck()
-    var rands : Record<string,number> = {}
+    const rands : Record<string,number> = {}
     this.deck.forEach( ( card ) => {rands[card.toString()] = Math.random()} )
     this.deck.sort( (i,j) => rands[i.toString()] - rands[j.toString()])
     return this
@@ -136,7 +136,7 @@ class Hand {
     this.hand = hand
   }
   getSelected( status : boolean  ) : Array<Card> {
-    let rV : Array<Card> = []
+    const rV : Array<Card> = []
     this.hand.forEach( (x) => { if( x.selected === status ) { rV.push( x ) } } )
     console.log( "THERE ARE ", rV.length, " selected player cards")
     return rV
@@ -150,7 +150,7 @@ class Hand {
     return this
   }
   includesAll( cards : Array<Card> ) {
-    for( let card of cards ) {
+    for( const card of cards ) {
       if( !this.hand.includes( card ) ) {
         return false
       }
@@ -167,7 +167,7 @@ class Hand {
     return this
   }
   remove( set : Array<Card> ) : Hand {
-    for( let card of set ) {
+    for( const card of set ) {
       this.hand = this.hand.filter( x => !(x.suit === card.suit && x.rank === card.rank) )
     }
     return this

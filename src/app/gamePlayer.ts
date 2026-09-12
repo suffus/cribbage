@@ -92,7 +92,7 @@ export class GamePlayer {
           addAction = false
         } else {
         //// peg score
-          let pga : number[]= action.subaction === "player" ? [...state.playerPeg.points] : [...state.opponentPeg.points]
+          const pga : number[]= action.subaction === "player" ? [...state.playerPeg.points] : [...state.opponentPeg.points]
           console.log( "Pegging points:", pga )
           pga[2]=pga[1]; pga[1]=pga[0]; pga[0] += action.score
           this.stateUpdate[ action.subaction + "Peg" ] = {points: pga}
@@ -109,16 +109,24 @@ export class GamePlayer {
       case "show-dealer":
         action.delayFor( 1200 )
         this.game.getHand( this.game.dealer ).setFaceUp( true )
-        this.game.dealer === "player" ? this.stateUpdate['showPlayer'] = true : this.stateUpdate['showOpponent'] = true
+        if (this.game.dealer === "player") {
+          this.stateUpdate['showPlayer'] = true
+        } else {
+          this.stateUpdate['showOpponent'] = true
+        }
         break
       case "discard":
         break;
       case "show-non-dealer":
         action.delayFor( 1200 )
         this.game.getHand( this.game.getOtherPlayer( this.game.dealer ) ).setFaceUp( true )
-        this.game.dealer === "opponent" ? this.stateUpdate['showPlayer'] = true : this.stateUpdate['showOpponent'] = true
+        if (this.game.dealer === "opponent") {
+          this.stateUpdate['showPlayer'] = true
+        } else {
+          this.stateUpdate['showOpponent'] = true
+        }
         break
-      case "prepare-board":
+      case "prepare-board": {
         console.log( "New Game!" )
         const ups = {...initialState}
         ups.playerPeg = {...ups.playerPeg}
@@ -127,6 +135,7 @@ export class GamePlayer {
         ups.opponentPeg.points = [0,-1,-1]
         this.stateUpdate = ups
         break
+      }
       case "start-round":
         this.stateUpdate = { showCrib: false, showPlayer: false, showOpponent: false }
         break;
@@ -253,17 +262,18 @@ export class GamePlayer {
       case "play-card":
       case "discard":
         action.cards = []
-        for( let card of pa.cards ) {
+        for( const card of pa.cards ) {
           const pc = this.game.playerHand.hand.filter( (x) => x.suit === card.suit && x.rank === card.rank )
           if( pc.length === 1 ) {
             action.cards.push( pc[0] )
           }
         }
         break;
-      case "cut":
+      case "cut": {
         const card = pa.cards[0]
         action.cards = this.game.deck.getRemainingDeck().filter( (x) => x.suit === card.suit && x.rank === card.rank  )
         break;
+      }
     }
     action.source = "user"
     this.scheduleUserActions( state, action.action === "noop" ? [] : [action] )

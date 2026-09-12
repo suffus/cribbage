@@ -1,6 +1,3 @@
-import React from 'react'
-
-
 class Peg {
   track : number
   currentPoint: number
@@ -9,16 +6,15 @@ class Peg {
     if( n === 0 ) {
       return this
     }
-    let rV : Peg = new Peg( this.track )
+    const rV : Peg = new Peg( this.track )
     rV.previousPoint = this.currentPoint
     rV.currentPoint += this.currentPoint + n
     if( rV.currentPoint >= 121 ) {
       rV.currentPoint = 121
     }
-    console.log( "Scoring Peg:", n, this, rV )
     return rV
   }
-  constructor( trk : number, points: number[] ) {
+  constructor( trk : number, points: number[] = [0, -1] ) {
     if( points.length < 2 ) {
       points[0] = 0
       points[1] = -1
@@ -70,7 +66,6 @@ function getPoints( x : number ) : Array<Point> {
 const tracks=[21,42,63]
 const peggingPoints = tracks.map( (n) => getPoints( n ) )
 function CribbageBoard( {playerPeg, opponentPeg}: CBProps ) {
-  //console.log("BOARD RENDER")
   const trackStartY = 580
   const cX = 113.5
   const winPointY = 128
@@ -88,14 +83,13 @@ function CribbageBoard( {playerPeg, opponentPeg}: CBProps ) {
       } )
       return rV
   }
-  //console.log( "POINTS ARE:", getPegPoints( playerPeg )  )
 
   return (
       <div>
       <img src="/img/Cribbage_Board.svg" alt="Cribbage board with 3 tracks"/>
       <svg style={ {position:"absolute", top:0, left:0} } width={300} height={800}>
-      { getPegPoints( playerPeg ).map( (pt) => <circle cx={pt.x} cy={pt.y} r={5.5} fill='blue' />) }
-      { getPegPoints( opponentPeg ).map( (pt) => <circle cx={pt.x} cy={pt.y} r={5.5} fill='red' />) }
+      { getPegPoints( playerPeg ).map( (pt, idx) => <circle key={`player-${idx}`} cx={pt.x} cy={pt.y} r={5.5} fill='blue' />) }
+      { getPegPoints( opponentPeg ).map( (pt, idx) => <circle key={`opponent-${idx}`} cx={pt.x} cy={pt.y} r={5.5} fill='red' />) }
       </svg>
       </div>
   )

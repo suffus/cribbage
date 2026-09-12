@@ -4,8 +4,8 @@ function getSubsets( n : number ) : Array<Array<number> > {
   if( n === 0 ) {
     return []
   }
-  let rV : Array<Array<number> > = [];
-  let sN = getSubsets( n - 1 )
+  const rV : Array<Array<number> > = [];
+  const sN = getSubsets( n - 1 )
   sN.forEach( (s) => {rV.push( s ); rV.push( [...s, n-1])} )
   rV.push( [n-1] )
   return rV
@@ -123,18 +123,18 @@ export function calcExpectedHandScore( hand : Array<Card>, cardsOut : Record<Ran
 }
 
 function getBestHand( hand : Array<Card>, otherCardsSeen : Array<Card>, isPlayerCrib : boolean ) : Array<Card> {
-  let cardsSeen : Record<number, number> = {}
-  for( let r in rank_map ) {
+  const cardsSeen : Record<number, number> = {}
+  for( const r in rank_map ) {
     cardsSeen[parseInt(r, 10)] = 0
   }
-  let suitsSeen : Record<string, number> = {}
-  for( let s in suit_map ) {
+  const suitsSeen : Record<string, number> = {}
+  for( const s in suit_map ) {
     suitsSeen[s] = 0
   }
   [...hand, ...otherCardsSeen].forEach( x => {cardsSeen[x.rank]++; suitsSeen[x.suit]++})
   let maxScore = -100
   let bestHand : Array<Card> | undefined = undefined
-  for( let sel of selections ) {
+  for( const sel of selections ) {
     const s = sel[0]
     const crb = sel[1]
     const eH : Array<Card> = []
@@ -193,7 +193,7 @@ export function playBestCard1( gameHand: Array<Card>, playerHand: Array<Card>  )
   let bestPlay: Card | null = null
   let bestScore: number = -10
 
-  for( let card of playerHand ) {
+  for( const card of playerHand ) {
     const nS = score + card.value
     if( nS > 31 ) {
       continue
@@ -220,7 +220,7 @@ export function playBestCard1( gameHand: Array<Card>, playerHand: Array<Card>  )
 //// certain combinations
 function generateCribPairs( isPlayerCrib : boolean ) : Array< [Array<Card>, number] > {
   let tot = 0
-  let rV : Array<[Array<Card>, number]> = []
+  const rV : Array<[Array<Card>, number]> = []
   for( let r = 1; r <=13; r++ ) {
     const rC : Card = new Card( "joker", r as Rank )
     for( let s = r; s <= 13; s++ ) {
@@ -248,7 +248,7 @@ function generateCribPairs( isPlayerCrib : boolean ) : Array< [Array<Card>, numb
       rV.push([pair, score])
     }
   }
-  for( let k of rV ) {
+  for( const k of rV ) {
     k[1] /= tot
   }
   return rV
@@ -263,7 +263,7 @@ function calcExpectedCribScore( hand : Array<Card>, cardsSeen : Record< Rank, nu
     cS += cardsSeen[r as Rank]
     const rC = new Card( "joker", r as Rank )
     const pR = (4-cardsSeen[r as Rank])/52
-    for( let p of cribPairs ) {
+    for( const p of cribPairs ) {
       const eH = [...hand, ...p[0]]
       const score = scoreHand( eH, rC, true )
       exp += score * pR * p[1]
@@ -285,11 +285,11 @@ function calcExpectedCribScore( hand : Array<Card>, cardsSeen : Record< Rank, nu
 }
 
 function makeSelections( ) : Array<[Array<number>, Array<number>] > {
-  let rV : Array<[Array<number>, Array<number>]> = []
+  const rV : Array<[Array<number>, Array<number>]> = []
   for( let i = 0; i < 6; i++ ) {
     for( let j = i+1; j < 6; j++ ) {
       const crb : Array<number> = [i,j]
-      let hnd : Array<number> = []
+      const hnd : Array<number> = []
       for( let z = 0; z < 6; z++ ) {
         if( z !== i && z !== j ) {
           hnd.push( z )
@@ -497,7 +497,7 @@ class CribbageGame {
   }
 
   validateCards( action : GameAction, actionCards : Array<Card>, count : number, source : Hand ) : Array<GameAction> {
-    let rV = []
+    const rV = []
     if( actionCards.length !== count ) {
       rV.push( this.gameError( "bad-card-count", "An illegal number of cards has been requested to be applied") )
     }
@@ -589,7 +589,7 @@ class CribbageGame {
             this.registerAction( action )
             this.deck.shuffle()
             return [ new GameAction( "deal-card", this.getOtherPlayer( this.dealer ) )]
-          case "deal-card":
+          case "deal-card": {
             this.registerAction( action )
             const card = this.deck.dealOne()
             if( card ) {
@@ -609,6 +609,7 @@ class CribbageGame {
             } else {
               return [ this.gameError( "deck-error", "out of cards on the deck" )]
             }
+          }
           case "dealing-done":
             return this.nextStage( "selection" )
         }
@@ -637,7 +638,7 @@ class CribbageGame {
         }
         break;
 
-      case "playing":
+      case "playing": {
         let playNext = action.subaction ? this.getOtherPlayer( action.subaction ) : this.dealer
         switch( action.action ) {
           case "starter-card":
@@ -656,7 +657,7 @@ class CribbageGame {
           case "his-nibs":
             this.registerAction( action )
             return [this.scoreAction( 2, action.subaction, action, "his-nibs", "start" )]
-          case "play-card":
+          case "play-card": {
             this.registerAction( action )
             const va = this.validateCards( action, action.cards, 1, this.getHand( action.subaction ) )
             if( va.length > 0 ) {
@@ -705,6 +706,7 @@ class CribbageGame {
             rV.push( new GameAction( "need-play-card", playNext ) )
             this.turn = playNext
             return rV
+          }
           case "last-card":
             rV = []
             pegSum = this.playingHand.sum()
@@ -728,6 +730,7 @@ class CribbageGame {
             return rV
         }
         break;
+      }
       case "showing":
         switch( action.action ) {
           case "start-show":
@@ -736,24 +739,27 @@ class CribbageGame {
             this.crib.setFaceUp( false )
             this.savedOpponentHand.setFaceUp( true )
             return [ new GameAction( "show-non-dealer", this.getOtherPlayer( this.dealer ) )]
-          case "show-non-dealer":
+          case "show-non-dealer": {
             this.registerAction( action )
             this.getSavedHand( "player" ).setFaceUp( true )
             this.getSavedHand("opponent").sort()
             const nds = scoreHand( this.getSavedHand( this.getOtherPlayer( this.dealer ) ).hand, this.starter, false  )
             this.scores[ this.dealer === "player" ? "opponent-hand" : "player-hand" ] = nds
             return [ this.scoreAction( nds, this.getOtherPlayer( this.dealer ), action, "show-non-dealer", "show-hand"  ), new GameAction( "show-dealer", this.dealer ) ]
-          case "show-dealer":
+          }
+          case "show-dealer": {
             this.registerAction( action  )
             this.crib.setFaceUp( true )
             const ds = scoreHand( this.getSavedHand( this.dealer ).hand, this.starter, false )
             this.scores[ this.dealer === "player" ? "player-hand" : "opponent-hand" ] = ds
             return [this.scoreAction( ds, this.dealer, action, "show-dealer", "show-hand" ), new GameAction( "show-crib" )]
-          case "show-crib":
+          }
+          case "show-crib": {
             this.registerAction( action )
             const cs = scoreHand( this.crib.hand, this.starter, true )
             this.scores["crib"] = cs
             return [this.scoreAction( cs, this.dealer, action, "show-crib", "show-crib" ), new GameAction( "round-end" )]
+          }
           case "round-end":
             this.registerAction( action )
             this.dealer = this.getOtherPlayer( this.dealer )
