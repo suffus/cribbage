@@ -1,7 +1,6 @@
-import React, { useState } from 'react'
+import { useState, CSSProperties } from 'react'
 import { Card, Deck } from '../app/entities'
 import { Button, Modal } from 'react-bootstrap'
-import CSS from 'csstype'
 
 type PCProps = {
   card : Card;
@@ -67,7 +66,7 @@ function PlayingCard( { card, deck, cardSize, offsetStep, offset, onClickCallbac
   if( offsetStep === undefined ) { offsetStep = Math.floor(cardSize/4)}
   if( onClickCallback === undefined ) { onClickCallback = () => undefined }
   const topOffset = animate ? -0.1*cardSize : 0
-  const styles : CSS.Properties = {
+  const styles : CSSProperties = {
     position: 'absolute',
     display: 'inline',
     top: `${top + topOffset}px`,    // computed based on child and parent's height
@@ -84,9 +83,8 @@ function PlayingCard( { card, deck, cardSize, offsetStep, offset, onClickCallbac
   }
 //  console.log("PC",card, styles)
   const uri = card.isFaceUp ? deck.getFaceImageUri( card ) : deck.getBackImageUri( )
-  const ccb = () => onClickCallback && onClickCallback()
-  return onClickCallback && (
-    <div className='playing-card' style={ styles } onClick={ ccb }>
+  return (
+    <div className='playing-card' style={ styles } onClick={ onClickCallback }>
     <img width={ cardSize } src={ uri } alt={card.toString()}/>
     </div>
   )

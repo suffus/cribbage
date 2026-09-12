@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppSelector, useAppDispatch } from './app/hooks'
 import { Card, StdDeck, Deck  } from './app/entities';
 import { getBestHand } from './app/game'
@@ -6,37 +6,50 @@ import { thePlayer } from './app/gamePlayer'
 import { PlayerHand, CardHand, DeckSelector, PopupImage } from './components/CardComponents'
 import { CribbageBoard, Peg } from './components/CribbageBoard'
 import { Button } from 'react-bootstrap'
-import { userPlay, updateGameState, UserGamePlay, PCard } from './features/game/gameSlice'
+import { userPlay, UserGamePlay, PCard } from './features/game/gameSlice'
 import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-toast.configure()
 
 function Cribbage( {deck } : {deck? : Deck}  ) {
   const dispatch = useAppDispatch()
-  const uiGameState = useAppSelector( (s) => s.game )
+  const uiState = useAppSelector( (s) => s.game )
   const [selectedDeck, setSelectedDeck] = useState( deck )
   const [needDeck, setNeedDeck] = useState( deck ? false : true )
   const [showCard, setShowCard] = useState( "" )
-  const [playerPeg, setPlayerPeg] = useState( new Peg( 0, [] ) )
-  const [opponentPeg, setOpponentPeg] = useState( new Peg( 1, [] ))
-  const [lastMessageId, setLastMessageId] = useState( -1 )
-  const [nextRerenderId, setNextRerenderId] = useState( -1 )
 
   const game = thePlayer.game
   const gameState = game.stage
-  const uiState = uiGameState
   const theDeck = selectedDeck as Deck
+  const playerPeg = new Peg( 0, uiState.playerPeg.points )
+  const opponentPeg = new Peg( 1, uiState.opponentPeg.points )
 
-  if( game.deck !== theDeck ) {
-    game.deck = theDeck
-  }
+  useEffect(() => {
+    if (selectedDeck && game.deck !== selectedDeck) {
+      game.deck = selectedDeck
+    }
+  }, [game, selectedDeck])
 
-  console.log( "RENDER", gameState, thePlayer.playQueue, uiState, game.playerHand.hand.length )
+  useEffect(() => {
+    if (uiState.nextScheduledAction < 0) {
+      return
+    }
+    const timer = window.setTimeout(() => {
+      dispatch(userPlay({ action: "noop", cards: [] }))
+    }, uiState.nextScheduledAction)
+    return () => window.clearTimeout(timer)
+  }, [dispatch, uiState.nextScheduledAction, uiState.updateId])
 
-  if( uiState.nextScheduledAction >= 0 && uiState.updateId !== nextRerenderId  ) {   //// this drives delays
-    setNextRerenderId( uiState.updateId )
-    setTimeout( () => play( {action: "noop", cards: []} ), uiState.nextScheduledAction )
-  }
+  useEffect(() => {
+    if (!uiState.message) {
+      return
+    }
+    toast.info(uiState.message, {
+      position: 'top-left',
+      autoClose: 3000,
+      hideProgressBar: true,
+      closeOnClick: true,
+      pauseOnHover: true,
+    })
+  }, [uiState.message, uiState.updateId])
 
   const play = (action : UserGamePlay) => {
     dispatch( userPlay( action ) )
@@ -54,37 +67,6 @@ function Cribbage( {deck } : {deck? : Deck}  ) {
   }
 
   const showCardCallback = ( c: Card ) => () => {setShowCard(theDeck.getFaceImageUri( c ))}
-
-  function showInfo( info_in : string ) {
-    if( !info_in ) {
-      return
-    }
-    toast.info(info_in, {
-          position: 'top-left',
-          autoClose: 3000,
-          hideProgressBar: true,
-          closeOnClick: true,
-          pauseOnHover: true,
-          progress: undefined
-        })
-  }
-
-  if( uiState.message ) {
-    if( uiState.updateId !== lastMessageId ) {
-      showInfo( uiState.message )
-      setLastMessageId( uiState.updateId )
-    }
-  }
-
-  if( uiState.playerPeg.points[0] !== playerPeg.currentPoint ) {
-    console.log("Setting the player peg!")
-    setPlayerPeg( new Peg( 0, uiState.playerPeg.points ) )
-  }
-  if( uiState.opponentPeg.points[0] !== opponentPeg.currentPoint ) {
-    setOpponentPeg( new Peg( 1, uiState.opponentPeg.points ))
-  }
-
-  //////// CALLBACKS BELOW HERE
 
   const start = ( ) => {
     if( game.gameOver ) {
@@ -118,18 +100,6 @@ function Cribbage( {deck } : {deck? : Deck}  ) {
     setSelectedDeck( deck )
     game.deck = deck
   }
-  const setAutoPlay = ( p : boolean ) => {
-    dispatch( updateGameState({ ...uiState, "autoPlay" : p }) )
-  }
-
-  const fixScores = () => {
-    game.scores.player = 108
-    game.scores.opponent = 108
-    const newState = {...uiState}
-    newState.playerPeg = {"track":0, "points":[108, 104,100]}
-    newState.opponentPeg = {"track":1, "points":[108, 100,99]}
-    dispatch( updateGameState( newState ))
-  }
 
   let playHandSum = 0
   game.playingHand.hand.forEach( x => { playHandSum += x.value } )
@@ -157,7 +127,6 @@ function Cribbage( {deck } : {deck? : Deck}  ) {
     </div>
     <div className="deck">
     { (gameState === "cutting") && <CardHand deck={theDeck} hand={theDeck.getRemainingDeck()} clickCallback={ playerCut } top={50} left={ 100 } spacing={ 450/theDeck.getRemainingDeck().length } cardSize={ cardSize } /> }
-    { gameState === "dealing" && false && <CardHand deck={theDeck} hand={theDeck.getRemainingDeck() } top={50} left={ 100 } spacing={ 5 } cardSize={ cardSize } /> }
     { (gameState === "playing" || gameState === "showing" || gameState === "ending") && game.starter &&  <CardHand deck={ theDeck } hand={[game.starter as Card]} top={50} left={0} spacing={0} cardSize={ cardSize } clickCallback={ showCardCallback }/>}
     { (gameState === "playing" || gameState === "ending") && <CardHand deck={theDeck} hand={game.playingHand.hand} top={50} left={ handLeft } spacing={showSpacing} cardSize={ cardSize } score={ playHandSum } /> }
     { uiState.showCrib && <CardHand deck={ theDeck } hand={game.crib.hand} top={50} left={handLeft } spacing={showSpacing} cardSize={cardSize} clickCallback={showCardCallback} score={game.scores.crib }/>  }
