@@ -5,6 +5,7 @@ import gameReducer, {
   clearFinalBreakdown,
   initialState,
   resetDifficultyChoice,
+  resetGameUi,
   setDifficulty,
 } from './gameSlice'
 
@@ -44,6 +45,49 @@ describe("T6 difficulty survives prepare-board", () => {
     expect(store.getState().game.difficultyChosen).toBe(false)
     expect(store.getState().game.finalBreakdown).toBeNull()
     expect(initialState.difficultyChosen).toBe(false)
+  })
+
+  it("resetGameUi clears the finished-game display state and preserves difficulty", () => {
+    const store = configureStore({
+      reducer: { game: gameReducer },
+      preloadedState: {
+        game: {
+          ...initialState,
+          message: "opponent has won the game",
+          gameStage: "ending" as const,
+          nextScheduledAction: 100,
+          showCrib: true,
+          showPlayer: true,
+          showOpponent: true,
+          playerPeg: { track: 0, points: [84, 82, 80] },
+          opponentPeg: { track: 1, points: [121, 119, 117] },
+          difficulty: "expert" as const,
+          difficultyChosen: true,
+          finalBreakdown: {
+            player: { hand: 50, crib: 10, pegging: 20, bonuses: 0, total: 80 },
+            opponent: { hand: 80, crib: 20, pegging: 21, bonuses: 0, total: 121 },
+            winner: "opponent" as const,
+            rounds: 8,
+            difficulty: "expert" as const,
+          },
+        },
+      },
+    })
+
+    store.dispatch(resetGameUi())
+
+    const state = store.getState().game
+    expect(state.message).toBe("")
+    expect(state.gameStage).toBe("starting")
+    expect(state.nextScheduledAction).toBe(-1)
+    expect(state.showCrib).toBe(false)
+    expect(state.showPlayer).toBe(false)
+    expect(state.showOpponent).toBe(false)
+    expect(state.playerPeg.points).toEqual([0, -1, -1])
+    expect(state.opponentPeg.points).toEqual([0, -1, -1])
+    expect(state.difficulty).toBe("expert")
+    expect(state.difficultyChosen).toBe(false)
+    expect(state.finalBreakdown).toBeNull()
   })
 
   it("seeds difficulty from a valid Difficulty and leaves the gate closed", () => {

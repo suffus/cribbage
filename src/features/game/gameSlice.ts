@@ -78,11 +78,29 @@ export const gameSlice = createSlice({
     resetDifficultyChoice: (state : GamePlayingState) => {
       state.difficultyChosen = false
     },
+    resetGameUi: (state : GamePlayingState) => {
+      return {
+        ...initialState,
+        scoreAction: { ...initialState.scoreAction },
+        userAction: { ...initialState.userAction, cards: [] },
+        playerPeg: { ...initialState.playerPeg, points: [...initialState.playerPeg.points] },
+        opponentPeg: { ...initialState.opponentPeg, points: [...initialState.opponentPeg.points] },
+        nextScheduledAction: -1,
+        updateId: state.updateId + 1,
+        difficulty: state.difficulty,
+      }
+    },
     clearFinalBreakdown: (state : GamePlayingState) => {
       state.finalBreakdown = null
     },
   },
 });
 
-export const { userPlay, setDifficulty, resetDifficultyChoice, clearFinalBreakdown } = gameSlice.actions
+export const {
+  userPlay,
+  setDifficulty,
+  resetDifficultyChoice,
+  resetGameUi,
+  clearFinalBreakdown,
+} = gameSlice.actions
 export default gameSlice.reducer
