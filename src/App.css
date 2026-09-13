@@ -226,3 +226,314 @@
   opacity: 0;
   transition: opacity 200ms;
 }
+
+/* ---------------------------------------------------------------------------
+   Splash (v0.3 shell)
+   --------------------------------------------------------------------------- */
+
+@keyframes splash-title-in {
+  0% { opacity: 0; transform: scale(0.94); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes splash-rise {
+  0% { transform: translateY(16px); }
+  100% { transform: translateY(0); }
+}
+
+@keyframes splash-hero-drift {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.06); }
+}
+
+.splash {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  color: #f4efe2;
+  background:
+    linear-gradient(160deg, #0d3b24 0%, #14532d 42%, #0b2a1a 100%);
+}
+
+.splash-hero {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+
+.splash-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(180deg, rgba(6, 20, 12, 0.18) 0%, rgba(10, 28, 18, 0.12) 42%, rgba(6, 16, 10, 0.78) 100%);
+}
+
+.splash-content {
+  position: relative;
+  z-index: 3;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 2rem 1.5rem 2.4rem;
+}
+
+.splash-title {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(3rem, 8vw, 5.5rem);
+  letter-spacing: 0.06em;
+  color: #f7e7b0;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.55);
+  margin-bottom: 0.4rem;
+}
+
+.splash-tagline {
+  max-width: 28rem;
+  font-size: 1.15rem;
+  color: #e8dfc8;
+  margin-bottom: 1.75rem;
+}
+
+.splash-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  width: min(22rem, 90vw);
+}
+
+.splash-btn {
+  font-size: 1.25rem;
+  padding: 0.7rem 1.2rem;
+}
+
+.splash-secondary {
+  display: flex;
+  gap: 1.5rem;
+  margin-top: 1.6rem;
+}
+
+.splash-link {
+  background: none;
+  border: none;
+  color: #d9c48a;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0.25rem;
+  font-size: 1rem;
+}
+
+.splash-link:hover,
+.splash-link:focus {
+  color: #f7e7b0;
+}
+
+.splash-fairness {
+  margin-top: 2rem;
+  max-width: 26rem;
+  font-size: 0.95rem;
+  color: #c9d6c4;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .splash-title {
+    animation: splash-title-in 600ms ease both;
+  }
+  .splash-btn-play {
+    animation: splash-rise 400ms ease both;
+    animation-delay: 600ms;
+  }
+  .splash-btn-learn {
+    animation: splash-rise 400ms ease both;
+    animation-delay: 720ms;
+  }
+  .splash-hero {
+    animation: splash-hero-drift 18s ease-in-out infinite alternate;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Learn / Stats / Friend screens
+   --------------------------------------------------------------------------- */
+
+.learn-page,
+.stats-page,
+.friend-page {
+  min-height: 100vh;
+  text-align: left;
+  color: #f4efe2;
+  background: linear-gradient(180deg, #0d3b24 0%, #123d27 100%);
+  padding: 1.5rem 0 3rem;
+}
+
+.screen-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.screen-header h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  color: #f7e7b0;
+  margin: 0;
+}
+
+.learn-accordion {
+  --bs-accordion-bg: #14532d;
+  --bs-accordion-color: #f4efe2;
+  --bs-accordion-border-color: #1f6b3a;
+  --bs-accordion-btn-bg: #166534;
+  --bs-accordion-btn-color: #f7e7b0;
+  --bs-accordion-active-bg: #1a7a3c;
+  --bs-accordion-active-color: #fff8dc;
+}
+
+.learn-score-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.learn-score-table th,
+.learn-score-table td {
+  border-bottom: 1px solid #2d6a42;
+  padding: 0.4rem 0.5rem;
+}
+
+.learn-difficulty-list {
+  padding-left: 1.2rem;
+  margin-bottom: 1rem;
+}
+
+.learn-difficulty-list li {
+  margin-bottom: 0.5rem;
+}
+
+.learn-lessons {
+  margin-top: 2rem;
+}
+
+.learn-lesson-tile {
+  background: #14532d;
+  color: #f4efe2;
+  border-color: #1f6b3a;
+}
+
+.coming-soon,
+.coming-soon-list {
+  color: #d9c48a;
+  font-style: italic;
+  margin-top: 0.5rem;
+}
+
+.stats-block {
+  margin-bottom: 1.5rem;
+}
+
+.stats-block h2,
+.stats-block h3 {
+  color: #f7e7b0;
+}
+
+.stats-split {
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.friend-copy {
+  max-width: 36rem;
+}
+
+.friend-form {
+  max-width: 22rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* ---------------------------------------------------------------------------
+   Difficulty + game-over modals
+   --------------------------------------------------------------------------- */
+
+.difficulty-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.difficulty-option {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid #c9b36a;
+  border-radius: 8px;
+  background: #f7f1de;
+  color: #1a2e1c;
+  cursor: pointer;
+}
+
+.difficulty-option.is-selected {
+  outline: 2px solid #14532d;
+  background: #fff8dc;
+}
+
+.difficulty-option-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  text-align: left;
+}
+
+.gameover-meta {
+  color: #5a4a20;
+}
+
+.gameover-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.gameover-col h3 {
+  color: #14532d;
+}
+
+.gameover-col dl div {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid #e6d9b0;
+  padding: 0.25rem 0;
+}
+
+.gameover-total {
+  font-weight: 700;
+  font-size: 1.15rem;
+}
+
+.scoreExplanation {
+  margin-top: 1rem;
+  color: #6b5a2e;
+  font-style: italic;
+}
+
+.scoreExplanation-total {
+  font-weight: 700;
+  font-style: normal;
+  margin-right: 0.5rem;
+}
+
+.scoreExplanationShow {
+  position: absolute;
+  top: 250px;
+  left: 170px;
+  max-width: 280px;
+  font-size: 0.85rem;
+  color: #f7e7b0;
+  z-index: 4;
+}

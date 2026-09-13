@@ -1,4 +1,5 @@
 import {Card, Suit, Rank, rank_map, suit_map, Hand, Deck} from './entities'
+import type { Difficulty } from './difficulty'
 
 function getSubsets( n : number ) : Array<Array<number> > {
   if( n === 0 ) {
@@ -31,6 +32,18 @@ function scoreSubset( hand : Array<Card>, subset : Array<number> ) : number {
   return 0
 }
 
+export function countNobs( hand : Array<Card>, cutCard : Card | undefined ) : number {
+  if( !cutCard ) {
+    return 0
+  }
+  for( const c of hand ) {
+    if( c.rank === 11 && c.suit === cutCard.suit ) {
+      return 1
+    }
+  }
+  return 0
+}
+
 function scoreHand( hand : Array<Card>, cutCard : Card | undefined, isCrib : boolean  ) : number {
     let eH : Array<Card> = []
     if( cutCard ) {
@@ -42,17 +55,18 @@ function scoreHand( hand : Array<Card>, cutCard : Card | undefined, isCrib : boo
     const checkFlushSuit = hand[0].suit
     let isFlush = true
     hand.forEach( (c) => {if( c.suit !== checkFlushSuit ) {isFlush = false}} )
-    let nobScore = 0
-    if( cutCard ) {
-      hand.forEach( c => {if( c.rank === 11 && c.suit === (cutCard as Card).suit ) { nobScore = 1 }} )
-    }
+    const nobScore = countNobs( hand, cutCard )
     eH = eH.sort( (c1, c2) => c1.rank - c2.rank )
     //console.log( eH )
     let flushScore = 0
-    if( isFlush && !isCrib ) {
-      flushScore = 4
-      if( cutCard && cutCard.suit === checkFlushSuit ) {
-        flushScore += 1
+    if (isFlush) {
+      if (!isCrib) {
+        flushScore = 4
+        if (cutCard && cutCard.suit === checkFlushSuit) {
+          flushScore += 1
+        }
+      } else if (cutCard && cutCard.suit === checkFlushSuit) {
+        flushScore = 5
       }
     }
     let runScore = 0
@@ -122,7 +136,20 @@ export function calcExpectedHandScore( hand : Array<Card>, cardsOut : Record<Ran
   return baseHandScore + scoreDelta/totCards
 }
 
-function getBestHand( hand : Array<Card>, otherCardsSeen : Array<Card>, isPlayerCrib : boolean ) : Array<Card> {
+export type DiscardOption = {
+  keep: Array<Card>
+  discard: Array<Card>
+  score: number          // existing tScore: eScore ± cScore
+}
+
+export type PlayOption = {
+  card: Card
+  score: number          // existing dS
+}
+
+export function rankDiscards(
+  hand: Array<Card>, otherCardsSeen: Array<Card>, isPlayerCrib: boolean
+): Array<DiscardOption> {
   const cardsSeen : Record<number, number> = {}
   for( const r in rank_map ) {
     cardsSeen[parseInt(r, 10)] = 0
@@ -132,8 +159,7 @@ function getBestHand( hand : Array<Card>, otherCardsSeen : Array<Card>, isPlayer
     suitsSeen[s] = 0
   }
   [...hand, ...otherCardsSeen].forEach( x => {cardsSeen[x.rank]++; suitsSeen[x.suit]++})
-  let maxScore = -100
-  let bestHand : Array<Card> | undefined = undefined
+  const options : Array<DiscardOption> = []
   for( const sel of selections ) {
     const s = sel[0]
     const crb = sel[1]
@@ -144,13 +170,16 @@ function getBestHand( hand : Array<Card>, otherCardsSeen : Array<Card>, isPlayer
     const eScore = calcExpectedHandScore( eH, cardsSeen, suitsSeen )
     const cScore = calcExpectedCribScore( cH, cardsSeen, suitsSeen, isPlayerCrib )
     const tScore = isPlayerCrib ? eScore + cScore : eScore - cScore
-    if( tScore > maxScore ) {
-      maxScore = tScore
-      bestHand = eH
-    }
+    options.push( { keep: eH, discard: cH, score: tScore } )
     console.log("Expected Score for ", eH.join(), " is ", tScore, eScore, cScore )
   }
-  return bestHand as Array<Card>
+  // Array.prototype.sort is specified stable; that stability keeps Expert identical to v0.2 on ties.
+  options.sort( (a, b) => b.score - a.score )
+  return options
+}
+
+function getBestHand( hand : Array<Card>, otherCardsSeen : Array<Card>, isPlayerCrib : boolean ) : Array<Card> {
+  return rankDiscards(hand, otherCardsSeen, isPlayerCrib)[0].keep
 }
 
 const p1Costs : Record<number, number> = {
@@ -187,10 +216,12 @@ const p1Costs : Record<number, number> = {
   31: 0
 }
 
-export function playBestCard1( gameHand: Array<Card>, playerHand: Array<Card>  ) : Card | null {
+export function rankPlays(
+  gameHand: Array<Card>, playerHand: Array<Card>
+): Array<PlayOption> {
   let score = 0
   gameHand.forEach( (x) => {score += x.value})
-  let bestPlay: Card | null = null
+  const options : Array<PlayOption> = []
   let bestScore: number = -10
 
   for( const card of playerHand ) {
@@ -206,14 +237,19 @@ export function playBestCard1( gameHand: Array<Card>, playerHand: Array<Card>  )
       dS += 2
     }
     dS -= p1Costs[nS]
+    options.push( { card, score: dS } )
     if( dS > bestScore ) {
       bestScore = dS
-      bestPlay = card
-
-        console.log( "BEST SCORE:", bestScore, bestPlay)
+      console.log( "BEST SCORE:", bestScore, card)
     }
   }
-  return bestPlay
+  // Array.prototype.sort is specified stable; that stability keeps Expert identical to v0.2 on ties.
+  options.sort( (a, b) => b.score - a.score )
+  return options
+}
+
+export function playBestCard1( gameHand: Array<Card>, playerHand: Array<Card>  ) : Card | null {
+  return rankPlays(gameHand, playerHand)[0]?.card ?? null
 }
 
 //// function tries to guess likelihood of opponent throwing away
@@ -314,12 +350,58 @@ type  GameEvent = "start-round" | "prepare-board" | "need-cut" | "cut" | "cut-ti
 type PlayerEvent = "player" | "opponent" | undefined
 type ActionSource = "game" | "user" | "play" | "show-hand" | "show-crib" | "start"
 
+export type ScoreCategory = "hand" | "crib" | "pegging" | "bonuses"
+
+export type PlayerBreakdown = {
+  hand: number
+  crib: number
+  pegging: number
+  bonuses: number
+  total: number
+}
+
+export type GameBreakdown = {
+  player: PlayerBreakdown
+  opponent: PlayerBreakdown
+  winner: PlayerEvent
+  rounds: number
+  difficulty: Difficulty
+}
+
+export function emptyBreakdown(): { player: PlayerBreakdown, opponent: PlayerBreakdown } {
+  return {
+    player: { hand: 0, crib: 0, pegging: 0, bonuses: 0, total: 0 },
+    opponent: { hand: 0, crib: 0, pegging: 0, bonuses: 0, total: 0 },
+  }
+}
+
+function categoryFor( action : GameAction ) : ScoreCategory | null {
+  if( action.source === "play" &&
+      (action.reason === "15" || action.reason === "31" || action.reason === "run" ||
+       action.reason === "pair" || action.reason === "the-last-card") ) {
+    return "pegging"
+  }
+  if( action.source === "start" && action.reason === "his-nibs" ) {
+    return "bonuses"
+  }
+  if( action.source === "show-hand" &&
+      (action.reason === "show-dealer" || action.reason === "show-non-dealer") ) {
+    return "hand"
+  }
+  if( action.source === "show-crib" && action.reason === "show-crib" ) {
+    return "crib"
+  }
+  console.log( "Unknown score category; skipping ledger update", action.source, action.reason )
+  return null
+}
+
 class GameAction {
   public action : GameEvent
   public registered : boolean = false
   public subaction? : PlayerEvent = undefined
   public cards : Array<Card> = []
   public score : number = 0
+  public bonus : number = 0
   public scoreFor? : GameAction = undefined
   public reason : string = ""
   public responded : boolean = false
@@ -384,9 +466,23 @@ class CribbageGame {
     "opponent" : 0,
     "player-hand" : 0,
     "opponent-hand" : 0,
-    "crib" : 0,
-    "playing" : 0,
-    "starting" : 0
+    "crib" : 0
+  }
+
+  public breakdown: { player: PlayerBreakdown, opponent: PlayerBreakdown } = emptyBreakdown()
+  public rounds: number = 0
+  // Q1-B: true after this deal is counted (round-end or ending). Cleared on start-round
+  // so a later peg-out or mid-show win still increments rounds when entering ending.
+  private roundCounted: boolean = false
+
+  getBreakdownSnapshot(difficulty: Difficulty): GameBreakdown {
+    return {
+      player: { ...this.breakdown.player },
+      opponent: { ...this.breakdown.opponent },
+      winner: this.winner,
+      rounds: this.rounds,
+      difficulty,
+    }
   }
 
   getOtherPlayer( player : PlayerEvent ) : PlayerEvent {
@@ -460,6 +556,11 @@ class CribbageGame {
       case "showing":
         return [ new GameAction( "start-show", this.getOtherPlayer( this.dealer ) )]
       case "ending":
+        // Q1-B: count this deal if a win skipped round-end (peg-out or mid-show).
+        if( !this.roundCounted ) {
+          this.rounds += 1
+          this.roundCounted = true
+        }
         return [ new GameAction( "game-win", this.winner )]
     }
     return [this.gameError( "cannot find stage " + stage )]
@@ -531,6 +632,7 @@ class CribbageGame {
           case "start-round":
             // empty all hands and rebuild the deck
             this.registerAction( action )
+            this.roundCounted = false
             this.resetGame( )
             if( !this.dealer ) {
               console.log( "Shuffling!" )
@@ -743,36 +845,44 @@ class CribbageGame {
             this.registerAction( action )
             this.getSavedHand( "player" ).setFaceUp( true )
             this.getSavedHand("opponent").sort()
-            const nds = scoreHand( this.getSavedHand( this.getOtherPlayer( this.dealer ) ).hand, this.starter, false  )
+            const ndHand = this.getSavedHand( this.getOtherPlayer( this.dealer ) ).hand
+            const nds = scoreHand( ndHand, this.starter, false  )
             this.scores[ this.dealer === "player" ? "opponent-hand" : "player-hand" ] = nds
-            return [ this.scoreAction( nds, this.getOtherPlayer( this.dealer ), action, "show-non-dealer", "show-hand"  ), new GameAction( "show-dealer", this.dealer ) ]
+            const ndAct = this.scoreAction( nds, this.getOtherPlayer( this.dealer ), action, "show-non-dealer", "show-hand"  )
+            ndAct.bonus = countNobs( ndHand, this.starter )
+            return [ ndAct, new GameAction( "show-dealer", this.dealer ) ]
           }
           case "show-dealer": {
             this.registerAction( action  )
             this.crib.setFaceUp( true )
-            const ds = scoreHand( this.getSavedHand( this.dealer ).hand, this.starter, false )
+            const dHand = this.getSavedHand( this.dealer ).hand
+            const ds = scoreHand( dHand, this.starter, false )
             this.scores[ this.dealer === "player" ? "player-hand" : "opponent-hand" ] = ds
-            return [this.scoreAction( ds, this.dealer, action, "show-dealer", "show-hand" ), new GameAction( "show-crib" )]
+            const dAct = this.scoreAction( ds, this.dealer, action, "show-dealer", "show-hand" )
+            dAct.bonus = countNobs( dHand, this.starter )
+            return [dAct, new GameAction( "show-crib" )]
           }
           case "show-crib": {
             this.registerAction( action )
             const cs = scoreHand( this.crib.hand, this.starter, true )
             this.scores["crib"] = cs
-            return [this.scoreAction( cs, this.dealer, action, "show-crib", "show-crib" ), new GameAction( "round-end" )]
+            const cAct = this.scoreAction( cs, this.dealer, action, "show-crib", "show-crib" )
+            cAct.bonus = countNobs( this.crib.hand, this.starter )
+            return [cAct, new GameAction( "round-end" )]
           }
           case "round-end":
             this.registerAction( action )
+            this.rounds += 1
+            this.roundCounted = true
             this.dealer = this.getOtherPlayer( this.dealer )
             return this.nextStage( "starting" )
-          case "quit":
-            this.registerAction( action )
-            this.winner = "opponent"
-            this.gameOver = true
-            return [...this.nextStage( "ending" ), new GameAction("new-game")]
         }  //// close showing switch block
         break
       case "ending":
         switch( action.action ) {
+          case "game-win":
+            this.registerAction( action )
+            return []
           case "end-game":
             this.registerAction( action )
             //// insert logic for storing the game details
@@ -789,6 +899,14 @@ class CribbageGame {
       this.registerAction( action )
       if( !this.gameOver && action.subaction ) {
         this.scores[action.subaction] += action.score
+        const p = action.subaction
+        const bucket = categoryFor( action )
+        if( bucket ) {
+          this.breakdown[p][bucket] += action.score - action.bonus
+          this.breakdown[p].bonuses += action.bonus
+          this.breakdown[p].total = this.breakdown[p].hand + this.breakdown[p].crib
+            + this.breakdown[p].pegging + this.breakdown[p].bonuses
+        }
         if( this.scores[action.subaction] > 120 ) {
           this.gameOver = true  ///// do not wait for the game-win!
           this.winner = action.subaction
@@ -810,6 +928,15 @@ class CribbageGame {
       this.winner = action.subaction
       return this.nextStage( "ending" )
     }
+    if( action.action === "quit" ) {
+      if( this.gameOver ) {
+        return []
+      }
+      this.registerAction( action )
+      this.winner = "opponent"
+      this.gameOver = true
+      return this.nextStage( "ending" )
+    }
     if( !action.registered ) {
       console.log( "Unregistered Action", action )
     }
@@ -824,6 +951,9 @@ class CribbageGame {
       this.scores.opponent = 0
       this.winner = undefined
       this.allActions=[]
+      this.breakdown = emptyBreakdown()
+      this.rounds = 0
+      this.roundCounted = false
     }
     this.scores['player-hand'] = -1
     this.scores['opponent-hand'] = -1
