@@ -1,10 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAppSelector, useAppDispatch } from './app/hooks'
 import { Card, StdDeck, Deck  } from './app/entities';
-import { getBestHand } from './app/game'
+import { getBestHand, GameBreakdown } from './app/game'
 import { thePlayer } from './app/gamePlayer'
+import { recordCompletedGame } from './app/persistence'
+import { useCardMetrics } from './app/useCardMetrics'
 import { PlayerHand, CardHand, DeckSelector, PopupImage } from './components/CardComponents'
 import { CribbageBoard, Peg } from './components/CribbageBoard'
+import { DifficultyModal } from './components/DifficultyModal'
+import { GameOverModal } from './components/GameOverModal'
+import { ScoreExplanation } from './components/ScoreExplanation'
 import { Button } from 'react-bootstrap'
 import { userPlay, UserGamePlay, PCard } from './features/game/gameSlice'
 import { toast } from 'react-toastify';
@@ -15,12 +20,28 @@ function Cribbage( {deck } : {deck? : Deck}  ) {
   const [selectedDeck, setSelectedDeck] = useState( deck )
   const [needDeck, setNeedDeck] = useState( deck ? false : true )
   const [showCard, setShowCard] = useState( "" )
+  const recordedRef = useRef<GameBreakdown | null>(null)
+  const { cardSize, cardSpacing, showSpacing, handLeft } = useCardMetrics()
 
   const game = thePlayer.game
   const gameState = game.stage
   const theDeck = selectedDeck as Deck
   const playerPeg = new Peg( 0, uiState.playerPeg.points )
   const opponentPeg = new Peg( 1, uiState.opponentPeg.points )
+  const gated = !uiState.difficultyChosen || uiState.finalBreakdown !== null
+
+  useEffect(() => {
+    if (!uiState.difficultyChosen) {
+      thePlayer.resetForNewSession()
+    }
+  }, [uiState.difficultyChosen])
+
+  useEffect(() => {
+    const result = uiState.finalBreakdown
+    if (!result || recordedRef.current === result) return
+    recordedRef.current = result
+    recordCompletedGame(result)
+  }, [uiState.finalBreakdown])
 
   useEffect(() => {
     if (selectedDeck && game.deck !== selectedDeck) {
@@ -104,10 +125,6 @@ function Cribbage( {deck } : {deck? : Deck}  ) {
   let playHandSum = 0
   game.playingHand.hand.forEach( x => { playHandSum += x.value } )
 
-  const cardSize = 150
-  const cardSpacing = 100
-  const showSpacing = 120
-  const handLeft = 170
   if( needDeck ) {
     const decks = ["vv", "br1", "em1t", "em2", "rc"].map( x => new StdDeck( x ))
     return (
@@ -117,6 +134,8 @@ function Cribbage( {deck } : {deck? : Deck}  ) {
   return (
     <div className="play">
     { showCard && <PopupImage imageUrl={showCard} onClose={() => {setShowCard( "" )}} /> }
+    { !uiState.difficultyChosen && <DifficultyModal /> }
+    { uiState.finalBreakdown !== null && <GameOverModal /> }
     <div className="board">
     { ["playing", "showing", "ending", "dealing", "selection"].includes( gameState)  && <CribbageBoard playerPeg={playerPeg} opponentPeg={opponentPeg}/> }
     </div>
@@ -124,6 +143,16 @@ function Cribbage( {deck } : {deck? : Deck}  ) {
     <div className="playerScore">{ game.scores.player }</div>
     { gameState !== "showing" && <PlayerHand deck={ theDeck } hand={ game.playerHand.hand } cardSize={ cardSize} cardClick={ ccb } top={ 80 } left={handLeft }/> }
     { uiState.showPlayer && <CardHand deck={ theDeck } hand={ game.savedPlayerHand.hand } top={80} left={ handLeft } spacing={showSpacing} clickCallback={showCardCallback} cardSize={cardSize} score={game.scores['player-hand'] }/> }
+    { uiState.showPlayer && (
+      <div className="scoreExplanationShow">
+        <ScoreExplanation
+          hand={game.savedPlayerHand.hand.map((c) => c.toObject() as PCard)}
+          starter={game.starter ? game.starter.toObject() as PCard : null}
+          isCrib={false}
+          total={game.scores["player-hand"]}
+        />
+      </div>
+    )}
     </div>
     <div className="deck">
     { (gameState === "cutting") && <CardHand deck={theDeck} hand={theDeck.getRemainingDeck()} clickCallback={ playerCut } top={50} left={ 100 } spacing={ 450/theDeck.getRemainingDeck().length } cardSize={ cardSize } /> }
@@ -143,8 +172,8 @@ function Cribbage( {deck } : {deck? : Deck}  ) {
     { uiState.showOpponent && <CardHand deck={ theDeck } hand={ game.savedOpponentHand.hand } top={80} left={handLeft} spacing={showSpacing} cardSize={cardSize} clickCallback={showCardCallback} score={game.scores['opponent-hand']}/> }
     </div>
     <div className='commitCrib'>
-    { ["starting", "showing", "ending"].includes( gameState ) && <div><Button onClick={ start }>Start The Round!</Button> <Button onClick={quit}>Quit!</Button></div> }
-    { gameState === "selection" && <div><Button onClick={ playerDiscard }> Select for Crib</Button>  <Button onClick={ autoSelect } disabled={ game.playerHand.hand.length !== 6 }> Auto Select </Button></div> }
+    { !gated && ["starting", "showing", "ending"].includes( gameState ) && <div><Button onClick={ start }>Start The Round!</Button> <Button onClick={quit}>Quit!</Button></div> }
+    { !gated && gameState === "selection" && <div><Button onClick={ playerDiscard }> Select for Crib</Button>  <Button onClick={ autoSelect } disabled={ game.playerHand.hand.length !== 6 }> Auto Select </Button></div> }
     </div>
     </div>
   )

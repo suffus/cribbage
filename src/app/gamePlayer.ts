@@ -1,6 +1,7 @@
-import { CribbageGame, GameAction, PlayerEvent, GameEvent, getBestHand, playBestCard1 } from './game'
+import { CribbageGame, GameAction, PlayerEvent, GameEvent, getBestHand, playBestCard1, rankDiscards, rankPlays } from './game'
 import { Card, StdDeck } from './entities'
 import { GamePlayingState, UserGamePlay, initialState } from '../features/game/gameSlice'
+import { DIFFICULTY_WEIGHTS, pickWeightedIndex, type Difficulty } from './difficulty'
 
 export function UserAction( action : GameEvent, user? : PlayerEvent ) : GameAction {
   const rV = new GameAction( action, user )
@@ -48,7 +49,7 @@ export class GamePlayer {
         break
       case "need-discard":
         if ( action.subaction === "opponent" ) {
-          rV.add( this.selectOpponentCards( 2000 + Math.random()*1000  ) )
+          rV.add( this.selectOpponentCards( state.difficulty, 2000 + Math.random()*1000  ) )
         } else {
           if( !this.autoPlay ) {
             rV.add(this.showInfo( `You need to discard two cards for ${this.game.dealer === "player" ? "your" : "the opponent's"} crib.` ))
@@ -69,7 +70,7 @@ export class GamePlayer {
         break
       case "need-play-card":
         if( action.subaction === "opponent" ) {
-          rV.add( this.playOpponentCard( 1200 ) )
+          rV.add( this.playOpponentCard( state.difficulty, 1200 ) )
         } else if( this.autoPlay ) {
           rV.add( this.autoplayPlayerCard( 600 ))
         }
@@ -100,6 +101,7 @@ export class GamePlayer {
         break
       case "game-win":
         rV.add( this.showInfo( `${action.subaction} has won the game!`) )
+        this.stateUpdate["finalBreakdown"] = this.game.getBreakdownSnapshot(state.difficulty)
         break
       case "show-crib":
         action.delayFor( 1200 )
@@ -129,10 +131,11 @@ export class GamePlayer {
       case "prepare-board": {
         console.log( "New Game!" )
         const ups = {...initialState}
-        ups.playerPeg = {...ups.playerPeg}
-        ups.opponentPeg = {...ups.opponentPeg}
-        ups.playerPeg.points = [0,-1,-1]
-        ups.opponentPeg.points = [0,-1,-1]
+        ups.playerPeg = {...ups.playerPeg, points: [0,-1,-1]}
+        ups.opponentPeg = {...ups.opponentPeg, points: [0,-1,-1]}
+        ups.difficulty = state.difficulty
+        ups.difficultyChosen = state.difficultyChosen
+        ups.finalBreakdown = null
         this.stateUpdate = ups
         break
       }
@@ -171,15 +174,16 @@ export class GamePlayer {
     return act.delayFor( delay )
   }
 
-  playOpponentCard( delay : number ) : GameAction {
-    const card = playBestCard1( this.game.playingHand.hand, this.game.opponentHand.hand )
-    if( card ) {
-      const act = UserAction( "play-card", "opponent" )
-      act.cards = [card]
-      return act.delayFor( delay )
+  playOpponentCard( difficulty : Difficulty, delay : number ) : GameAction {
+    const options = rankPlays( this.game.playingHand.hand, this.game.opponentHand.hand )
+    const idx = pickWeightedIndex( DIFFICULTY_WEIGHTS[difficulty], options.length )
+    if( idx < 0 ) {
+      return new GameAction( "error" )
     }
-
-    return new GameAction( "error" )
+    const card = options[idx].card
+    const act = UserAction( "play-card", "opponent" )
+    act.cards = [card]
+    return act.delayFor( delay )
   }
 
 
@@ -194,8 +198,13 @@ export class GamePlayer {
     return new GameAction( "error" )
   }
 
-  selectOpponentCards( delay : number ) {
-    const keepers = getBestHand( this.game.opponentHand.hand, [], this.game.dealer === "opponent" )
+  selectOpponentCards( difficulty : Difficulty, delay : number ) {
+    const options = rankDiscards( this.game.opponentHand.hand, [], this.game.dealer === "opponent" )
+    const idx = pickWeightedIndex( DIFFICULTY_WEIGHTS[difficulty], options.length )
+    if( idx < 0 ) {
+      return new GameAction( "error" )
+    }
+    const keepers = options[idx].keep
     this.game.opponentHand.setSelected( true )
     keepers.forEach(element => {
       element.selected = false
@@ -203,6 +212,14 @@ export class GamePlayer {
     const act = UserAction( "discard", "opponent" )
     act.cards = this.game.getSelectedOpponentCards()
     return act.delayFor( delay )
+  }
+
+  resetForNewSession(): void {
+    this.playQueue = []
+    this.gameQueue = []
+    this.game.gameOver = true
+    this.game.resetGame()
+    this.stateUpdate = {}
   }
 
   autoSelectPlayerCards( delay : number ) {

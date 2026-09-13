@@ -1,7 +1,9 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { GameStage } from '../../app/game'
+import { GameStage, GameBreakdown } from '../../app/game'
 import { Suit, Rank } from '../../app/entities'
 import { thePlayer } from '../../app/gamePlayer'
+import type { Difficulty } from '../../app/difficulty'
+import { loadPreferences } from '../../app/persistence'
 
 type Score = {
   recipient : "player" | "opponent" | "none"
@@ -33,6 +35,9 @@ export interface GamePlayingState {
   playerPeg: GamePeg
   opponentPeg: GamePeg
   updateId: number
+  difficulty: Difficulty
+  difficultyChosen: boolean
+  finalBreakdown: GameBreakdown | null
 
   status: 'idle' | 'loading' | 'failed';
 }
@@ -50,6 +55,9 @@ export const initialState: GamePlayingState = {
   playerPeg: {track: 0, points: [0,-1,-1]},
   opponentPeg: {track: 1, points: [0,-1,-1]},
   updateId: 1,
+  difficulty: loadPreferences().difficulty,
+  difficultyChosen: false,
+  finalBreakdown: null,
   status: 'idle',
 };
 
@@ -63,8 +71,18 @@ export const gameSlice = createSlice({
       const updates = thePlayer.playAction( state, action.payload )
       return {...state, ...updates}
     },
+    setDifficulty: (state : GamePlayingState, action: PayloadAction<Difficulty>) => {
+      state.difficulty = action.payload
+      state.difficultyChosen = true
+    },
+    resetDifficultyChoice: (state : GamePlayingState) => {
+      state.difficultyChosen = false
+    },
+    clearFinalBreakdown: (state : GamePlayingState) => {
+      state.finalBreakdown = null
+    },
   },
 });
 
-export const { userPlay } = gameSlice.actions
+export const { userPlay, setDifficulty, resetDifficultyChoice, clearFinalBreakdown } = gameSlice.actions
 export default gameSlice.reducer

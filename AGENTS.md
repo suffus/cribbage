@@ -4,7 +4,7 @@ Guidance for coding agents working in this repository.
 
 ## Purpose
 
-CribbageX is a browser cribbage client (v0.2). A human plays a standard 121-point, two-player game against one computer opponent. There is no backend, no accounts, and no persistence. The product kernel is a local rules engine plus a pegboard UI.
+CribbageX is a browser cribbage client (v0.3). A human plays a standard 121-point, two-player game against one computer opponent. There is no backend and no accounts. Preferences and lifetime stats persist in `localStorage` (`src/app/persistence.ts`, key `cribbagex.v1`). The product kernel is a local rules engine plus a pegboard UI.
 
 Positioning and competitor notes live in `cribbage-games-competitors.md`. Do not treat that document as a build spec unless the user asks you to implement a listed feature.
 
@@ -17,7 +17,7 @@ Positioning and competitor notes live in `cribbage-games-competitors.md`. Do not
 - **Test / lint:** Vitest 3 + jsdom + Testing Library; ESLint 9 (`eslint.config.js`, `typescript-eslint`)
 - **Runtime:** static files only. Production image is Node 22 build → unprivileged nginx 1.27 on port **8080**
 
-There is **no database, ORM, seeder, API server, or test DB**. Do not add one unless the task requires it.
+There is **no database, ORM, seeder, API server, or test DB**. Persistence is `localStorage` only, isolated in `src/app/persistence.ts`. Do not add a backend unless the task requires it.
 
 ## Artifacts
 
@@ -53,28 +53,30 @@ User click / timer
 | Cards, deck, hand | `src/app/entities.ts` | `Card`, `StdDeck`, `Hand`, `Deck`. Image URIs under `/img/decks/{code}/` |
 | Rules + scoring + discard EV | `src/app/game.ts` | `CribbageGame`, `GameAction`, `scoreHand`, `getBestHand`, `playBestCard1` |
 | Opponent + timing | `src/app/gamePlayer.ts` | `GamePlayer`, exported `thePlayer`. Queues, AI discard/peg, toast/peg updates |
-| UI state contract | `src/features/game/gameSlice.ts` | `userPlay` is the only reducer. Actions: `cut`, `play-card`, `discard`, `start-round`, `new-game`, `round-end`, `noop`, `quit` |
+| UI state contract | `src/features/game/gameSlice.ts` | Reducers: `userPlay`, `setDifficulty`, `resetDifficultyChoice`, `clearFinalBreakdown`. Play actions: `cut`, `play-card`, `discard`, `start-round`, `new-game`, `round-end`, `noop`, `quit` |
 | Store / typed hooks | `src/app/store.ts`, `src/app/hooks.ts` | Use `useAppDispatch` / `useAppSelector` |
-| Table UI | `src/Cribbage.tsx` | Layout, buttons, timer that dispatches `noop` when `nextScheduledAction >= 0` |
+| Table UI | `src/Cribbage.tsx` | Layout, buttons, timer that dispatches `noop` when `nextScheduledAction >= 0`. Stays at `src/` (not `src/screens/`) |
 | Cards / board | `src/components/CardComponents.tsx`, `CribbageBoard.tsx` | Card faces, selection, SVG peg overlay on `public/img/Cribbage_Board.svg` |
-| Routes / skins | `src/App.tsx` | `/` default deck `rc`; `/brooke`, `/emma1`, `/emma2`, `/vintage`; `/select` picker |
+| Screens | `src/screens/` | Splash, Learn, Stats, FriendPlay |
+| Routes / skins | `src/App.tsx` | `/` splash; `/play` table (`rc`); `/learn`, `/stats`, `/friend`; `/brooke`, `/emma1`, `/emma2`, `/vintage` deep-link skins; `/select` picker; `*` → `/` |
 
 Game stages: `starting` → `cutting` (first deal) → `dealing` → `selection` → `playing` → `showing` → `starting`, or `ending` at 121.
 
-`thePlayer` is a **module singleton**. Tests that drive the engine must reset or isolate it; the current `App.test.tsx` does not.
+`thePlayer` is a **module singleton**. Tests that drive the engine, and a fresh table visit, must call `thePlayer.resetForNewSession()`. Difficulty changes strategy only; `StdDeck.shuffle` stays zero-argument. Crib flush is five-card only and **is implemented** in `scoreHand`. Quits are conceded games and increment lifetime/session stats.
 
 ## Repository layout
 
 ```
 src/
   index.tsx              # React 18 root, Provider, ToastContainer
-  App.tsx                # routes + deck map
-  Cribbage.tsx           # game screen
-  App.test.tsx           # smoke test (heading only)
+  App.tsx                # routes + deck map + GameLayout / AppRoutes
+  Cribbage.tsx           # game screen (table; not under screens/)
+  App.test.tsx           # splash smoke test
   setupTests.ts          # jest-dom for Vitest
-  app/                   # engine, store, hooks (not React UI)
+  app/                   # engine, store, hooks, persistence, difficulty
+  screens/               # Splash, Learn, Stats, FriendPlay
   features/game/         # Redux slice only
-  components/            # presentational cards + board
+  components/            # presentational cards + board + modals
 public/                  # static assets copied as-is (decks, board SVG, manifests)
 dist/                    # build output (gitignored)
 Dockerfile, nginx.conf   # unprivileged static hosting
@@ -110,8 +112,8 @@ Unused imports/vars fail lint unless prefixed `_`. There is no formatter script 
 
 | Layer | Status | Where / how |
 | --- | --- | --- |
-| Unit | Almost none; **add here first** | Pure functions in `game.ts` / `entities.ts` via Vitest. No HTTP, no DB. |
-| Component | One smoke test | `src/App.test.tsx` — RTL + real `store`. Follow this wrapper if you add UI tests. |
+| Unit | Engine, difficulty, persistence | `src/app/game.test.ts`, `difficulty.test.ts`, `persistence.test.ts`. No HTTP, no DB. |
+| Component | Splash + table gate | `src/App.test.tsx`, `src/screens/Splash.test.tsx`, `src/Cribbage.test.tsx` — RTL + store / MemoryRouter. |
 | Integration / e2e | None | Do not add Playwright/Cypress unless asked. Prefer calling `CribbageGame.doAction` / `scoreHand` directly. |
 
 `vite.config.ts`: `environment: 'jsdom'`, `globals: true`, `setupFiles: './src/setupTests.ts'`.
