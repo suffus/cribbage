@@ -954,6 +954,9 @@ class CribbageGame {
       this.breakdown = emptyBreakdown()
       this.rounds = 0
       this.roundCounted = false
+      this.stage = "starting"
+      this.stageActions = []
+      this.stageEvents.clear()
     }
     this.scores['player-hand'] = -1
     this.scores['opponent-hand'] = -1

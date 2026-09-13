@@ -445,8 +445,10 @@ describe("Q1-B rounds and ending path", () => {
     expect(game.rounds).toBe(3)
     expect(game.breakdown.player.hand).toBe(10)
     game.gameOver = true
+    game.stage = "ending"
     game.resetGame()
     expect(game.rounds).toBe(0)
+    expect(game.stage).toBe("starting")
     expect(game.breakdown.player).toEqual({ hand: 0, crib: 0, pegging: 0, bonuses: 0, total: 0 })
     expect(game.scores.player).toBe(0)
   })
