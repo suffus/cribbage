@@ -1,12 +1,13 @@
 import { Button, Modal } from 'react-bootstrap'
 import { useNavigate } from 'react-router-dom'
+import { toast } from 'react-toastify'
 import { DIFFICULTY_LABELS } from '../app/difficulty'
 import { thePlayer } from '../app/gamePlayer'
 import { useAppDispatch, useAppSelector } from '../app/hooks'
 import type { PlayerBreakdown } from '../app/game'
 import {
   clearFinalBreakdown,
-  resetDifficultyChoice,
+  resetGameUi,
   userPlay,
 } from '../features/game/gameSlice'
 import { ScoreExplanation } from './ScoreExplanation'
@@ -43,8 +44,8 @@ export function GameOverModal() {
 
   const backToMenu = () => {
     thePlayer.resetForNewSession()
-    dispatch(resetDifficultyChoice())
-    dispatch(clearFinalBreakdown())
+    toast.dismiss()
+    dispatch(resetGameUi())
     navigate("/")
   }
 
