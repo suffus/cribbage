@@ -36,6 +36,14 @@ describe("GamePlayer scaffold wiring", () => {
     expect(thePlayer.stateUpdate).toEqual({})
   })
 
+  it("resetForNewSession leaves the engine on starting after a finished game", () => {
+    thePlayer.game.stage = "ending"
+    thePlayer.game.gameOver = true
+    thePlayer.resetForNewSession()
+    expect(thePlayer.game.stage).toBe("starting")
+    expect(thePlayer.game.gameOver).toBe(false)
+  })
+
   it("has no stored difficulty field", () => {
     expect("difficulty" in thePlayer).toBe(false)
     expect(gamePlayerSource).not.toMatch(/this\.difficulty\s*=/)

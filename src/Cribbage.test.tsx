@@ -66,6 +66,33 @@ describe("T8 difficulty gate", () => {
     expect(document.querySelectorAll('img').length).toBeGreaterThan(0)
   })
 
+  it("Start Round works after back-to-menu reset from a finished game", async () => {
+    thePlayer.game.stage = "ending"
+    thePlayer.game.gameOver = true
+    thePlayer.resetForNewSession()
+    const store = configureStore({
+      reducer: { game: gameReducer },
+      preloadedState: {
+        game: {
+          ...initialState,
+          difficulty: "easy" as const,
+          difficultyChosen: true,
+        },
+      },
+    })
+    const user = userEvent.setup()
+    render(
+      <Provider store={store}>
+        <MemoryRouter>
+          <Cribbage deck={new StdDeck("rc")} />
+        </MemoryRouter>
+      </Provider>
+    )
+    await user.click(screen.getByRole("button", { name: "Start The Round!" }))
+    expect(thePlayer.game.stage).not.toBe("ending")
+    expect(["cutting", "dealing", "selection", "playing"]).toContain(thePlayer.game.stage)
+  })
+
   it("hides table actions and records a result when a snapshot is published", () => {
     thePlayer.resetForNewSession()
     clearAll()
