@@ -1,0 +1,2017 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CribbageX Tutorial — UI Mockups (v0.4.0)</title>
+<style>
+/* ===========================================================================
+   CribbageX tutorial mockups.
+   Self-contained: no CDN, no external images, no fonts, no network.
+   Palette is restricted to the U5 tokens plus the two card-face colours.
+   =========================================================================== */
+:root{
+  --green-900:#0d3b24;
+  --green-800:#14532d;
+  --green-700:#166534;
+  --green-600:#1a7a3c;
+  --line:#1f6b3a;
+  --cream:#f4efe2;
+  --gold:#f7e7b0;
+  --sand:#d9c48a;
+  --brass:#c9b36a;
+  /* Card faces only. Real cards are PNGs under /img/decks/{code}/. */
+  --card-face:#f4efe2;
+  --suit-red:#9b1c1c;
+  --suit-black:#1b1b1b;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  background:var(--green-900);
+  color:var(--cream);
+  line-height:1.5;
+}
+h1,h2,h3,h4{font-family:Georgia,"Times New Roman",serif;color:var(--gold);margin:0}
+code,kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.85em}
+a{color:var(--gold)}
+
+/* ---------- page chrome ---------- */
+.doc{display:grid;grid-template-columns:250px 1fr;min-height:100vh}
+.toc{
+  position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;
+  background:var(--green-800);border-right:1px solid var(--line);padding:1rem .75rem 3rem;
+}
+.toc h2{font-size:1rem;margin-bottom:.25rem}
+.toc .sub{font-size:.72rem;color:var(--sand);margin-bottom:1rem;font-style:italic}
+.toc ol{list-style:none;margin:0 0 1rem;padding:0}
+.toc li{margin:0}
+.toc a{
+  display:block;padding:.4rem .5rem;border-radius:4px;text-decoration:none;
+  color:var(--cream);font-size:.82rem;border-left:3px solid transparent;
+}
+.toc a:hover,.toc a:focus-visible{background:var(--green-700);color:var(--gold)}
+.toc .grp{
+  font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--brass);
+  margin:1rem 0 .35rem;padding-left:.5rem;
+}
+.main{padding:1.5rem 2rem 6rem;max-width:1180px}
+
+.page-head{border-bottom:1px solid var(--line);padding-bottom:1rem;margin-bottom:1.5rem}
+.page-head h1{font-size:1.9rem}
+.page-head p{margin:.5rem 0 0;max-width:70ch;color:var(--cream)}
+
+/* ---------- section scaffolding ---------- */
+.sec{margin:0 0 3.5rem;scroll-margin-top:1rem}
+.sec > header{border-bottom:1px dashed var(--line);padding-bottom:.6rem;margin-bottom:1rem}
+.sec h2{font-size:1.35rem;display:flex;align-items:baseline;gap:.6rem;flex-wrap:wrap}
+.tag{
+  font-family:ui-monospace,monospace;font-size:.7rem;background:var(--green-700);
+  color:var(--gold);border:1px solid var(--line);border-radius:999px;padding:.15rem .5rem;
+  letter-spacing:.04em;
+}
+.meta{font-size:.78rem;color:var(--sand);margin:.35rem 0 0}
+.meta code{color:var(--cream)}
+
+.note{
+  border-left:3px solid var(--brass);background:rgba(201,179,106,.09);
+  padding:.6rem .85rem;margin:.85rem 0;font-size:.85rem;border-radius:0 4px 4px 0;
+}
+.note strong{color:var(--gold)}
+.note.warn{border-left-color:var(--suit-red);background:rgba(155,28,28,.14)}
+
+/* device frame */
+.frame{
+  container-type:inline-size;
+  background:linear-gradient(180deg,var(--green-900) 0%,#123d27 100%);
+  border:1px solid var(--line);border-radius:8px;padding:1rem;margin-top:.75rem;
+}
+.frame.narrow{max-width:320px}
+.frame-label{
+  font-size:.68rem;text-transform:uppercase;letter-spacing:.09em;color:var(--brass);
+  margin-bottom:.5rem;
+}
+
+/* generic bootstrap-ish primitives, hand-rolled */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:.4rem;
+  min-height:44px;min-width:44px;padding:.5rem 1rem;border-radius:6px;
+  font:inherit;font-size:.9rem;cursor:pointer;text-decoration:none;
+  border:1px solid var(--line);background:var(--green-700);color:var(--cream);
+}
+.btn:hover{background:var(--green-600)}
+.btn:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.btn-primary{background:var(--gold);color:var(--green-900);border-color:var(--brass);font-weight:600}
+.btn-primary:hover{background:#fff1c4}
+.btn-outline{background:transparent;color:var(--cream);border-color:var(--sand)}
+.btn-outline:hover{background:rgba(244,239,226,.08)}
+.btn-link{
+  background:none;border:none;color:var(--gold);text-decoration:underline;
+  min-height:44px;padding:.5rem .35rem;cursor:pointer;font:inherit;font-size:.85rem;
+}
+.btn[disabled],.btn[aria-disabled="true"]{opacity:.45;cursor:not-allowed}
+.btn-row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}
+
+.card-surface{
+  background:var(--green-800);border:1px solid var(--line);border-radius:8px;padding:1rem;
+}
+
+/* ---------- playing cards (T3) ---------- */
+.hand{display:flex;flex-wrap:wrap;gap:.55rem;margin:0;padding:0;border:0}
+.hand legend{
+  font-size:.8rem;color:var(--gold);padding:0;margin-bottom:.4rem;font-weight:600;
+}
+.pc{
+  display:flex;flex-direction:column;align-items:center;gap:.2rem;
+  min-width:56px;min-height:92px;padding:.25rem;
+  background:transparent;border:2px solid transparent;border-radius:8px;
+  font:inherit;cursor:pointer;color:var(--cream);
+}
+.pc:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.pc-art{
+  width:46px;height:64px;border-radius:5px;background:var(--card-face);
+  border:1px solid var(--brass);display:flex;align-items:center;justify-content:center;
+  font-size:1.35rem;font-weight:700;line-height:1;position:relative;
+}
+.pc-art.red{color:var(--suit-red)}
+.pc-art.black{color:var(--suit-black)}
+.pc-art.missing{background:repeating-linear-gradient(45deg,#2b5a3f,#2b5a3f 5px,#24503a 5px,#24503a 10px);color:transparent;border-style:dashed}
+.pc-badge{
+  display:flex;flex-direction:column;align-items:center;line-height:1.2;
+  font-size:.78rem;font-weight:700;letter-spacing:.02em;color:var(--cream);
+}
+.pc-badge .rs{white-space:nowrap}
+.pc-badge .r{color:var(--gold)}
+/* states: outline + shape, never hue alone */
+.pc[aria-pressed="true"],.pc[aria-checked="true"]{border-color:var(--gold);background:rgba(247,231,176,.12)}
+.pc[aria-pressed="true"] .pc-badge::after,.pc[aria-checked="true"] .pc-badge::after{content:" ✓";color:var(--gold)}
+.pc.credited{border-color:var(--brass);border-style:double;border-width:4px;background:rgba(201,179,106,.14)}
+.pc.credited .pc-badge::after{content:" ✔ counted";font-size:.62rem;color:var(--sand)}
+.pc.hinted{border-color:var(--sand);border-style:dashed;animation:none}
+.pc.hinted .pc-badge::after{content:" ← hint";font-size:.62rem;color:var(--sand)}
+.pc.disabled,.pc[disabled]{opacity:.45;cursor:not-allowed;border-style:dotted;border-color:var(--sand)}
+.pc.disabled .pc-badge::after{content:" ✕";color:var(--sand)}
+.pc.static{cursor:default}
+.pc.small .pc-art{width:34px;height:48px;font-size:1rem}
+.pc.small{min-width:42px;min-height:70px}
+.sr-only{
+  position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0,0,0,0);white-space:nowrap;border:0;
+}
+
+/* ---------- RoundMap (T2) ---------- */
+.roundmap{display:flex;flex-wrap:wrap;gap:.3rem;list-style:none;margin:0;padding:0;align-items:center}
+.roundmap li{display:flex;align-items:center;gap:.3rem}
+.roundmap .step{
+  border:1px solid var(--line);background:var(--green-800);color:var(--cream);
+  border-radius:999px;padding:.25rem .7rem;font-size:.78rem;white-space:nowrap;
+}
+.roundmap .sep{color:var(--brass);font-size:.8rem}
+.roundmap [aria-current="step"] .step{
+  background:var(--gold);color:var(--green-900);border-color:var(--brass);font-weight:700;
+}
+.roundmap [aria-current="step"] .step::before{content:"▸ "}
+.roundmap .done .step::before{content:"✓ ";color:var(--sand)}
+
+/* ---------- GroupList (U1) ---------- */
+.grouplist{background:rgba(13,59,36,.55);border:1px solid var(--line);border-radius:6px;padding:.6rem .75rem}
+.grouplist ol{list-style:none;margin:0;padding:0;counter-reset:g}
+.grouplist li{
+  display:flex;justify-content:space-between;gap:1rem;align-items:baseline;
+  padding:.28rem 0;border-bottom:1px solid rgba(31,107,58,.55);font-size:.86rem;
+}
+.grouplist li:last-of-type{border-bottom:0}
+.grouplist .pts{font-weight:700;color:var(--gold);white-space:nowrap}
+.grouplist .active{background:rgba(247,231,176,.12);outline:1px solid var(--brass);border-radius:3px;padding-left:.3rem}
+.grouplist .active .lbl::before{content:"▸ "}
+.grouplist .total{
+  display:flex;justify-content:space-between;margin-top:.5rem;padding-top:.45rem;
+  border-top:2px solid var(--brass);font-weight:700;color:var(--gold);font-size:.95rem;
+}
+.grouplist.compact{font-size:.78rem;padding:.45rem .55rem}
+.grouplist.compact li{font-size:.78rem;padding:.18rem 0}
+
+/* ScoreExplanation wrapper */
+.scoreExplanation{margin-top:.75rem}
+.scoreExplanation h4{font-size:.9rem;margin-bottom:.35rem;color:var(--gold)}
+
+/* ---------- table mock (U3) ---------- */
+/* Literal 900x800 table canvas, scaled down to fit the page. Coordinates inside are
+   the real CSS pixel values from src/App.css and the U3 plan, so overlap is judgeable. */
+.table-scaler{overflow:hidden}
+.table-canvas{
+  position:relative;width:900px;height:800px;transform-origin:top left;
+  background:radial-gradient(circle at 50% 40%,#17663c 0%,#0d3b24 78%);
+  border:1px solid var(--line);border-radius:10px;font-size:.75rem;
+}
+.table-canvas .zone{position:absolute}
+.tbl-board{right:1.5%;top:6%;width:12%;height:86%;background:#3f2a17;border:1px solid #5d3f22;border-radius:8px}
+.tbl-board .peg{position:absolute;width:9px;height:9px;border-radius:50%;left:25%}
+.tbl-board .peg.p{background:var(--gold)}
+.tbl-board .peg.o{background:#c05a5a;left:60%}
+.tbl-label{position:absolute;color:var(--sand);font-size:.68rem;letter-spacing:.05em;text-transform:uppercase}
+.panel-show{
+  position:absolute;max-width:250px;background:rgba(13,59,36,.93);
+  border:1px solid var(--brass);border-radius:6px;padding:.4rem .5rem;color:var(--gold);
+}
+.panel-show h4{font-size:.75rem;margin-bottom:.2rem}
+.panel-show .grouplist{background:none;border:0;padding:0}
+.panel-show .grouplist li{font-size:.7rem;padding:.12rem 0;color:var(--cream)}
+.panel-show .grouplist .total{font-size:.78rem;margin-top:.3rem;padding-top:.25rem}
+
+/* ---------- tutorial shell (T1) ---------- */
+.shell{background:var(--green-900);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.shell-head{
+  display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;
+  padding:.85rem 1rem;background:var(--green-800);border-bottom:1px solid var(--line);
+}
+.shell-head h1{font-size:1.25rem}
+.shell-head .stepcount{font-size:.8rem;color:var(--sand);display:block;margin-top:.15rem}
+.shell-map{padding:.6rem 1rem;border-bottom:1px solid var(--line);background:rgba(20,83,45,.5)}
+.shell-body{display:grid;grid-template-columns:2fr 1fr;gap:1rem;padding:1rem}
+.shell-foot{
+  display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;
+  padding:.75rem 1rem;background:var(--green-800);border-top:1px solid var(--line);
+}
+.workspace h2,.coach h2{font-size:1rem;margin-bottom:.6rem}
+.workspace{min-width:0}
+.coach{min-width:0}
+/* The real build stacks at Bootstrap's md breakpoint (768px viewport) via Row/Col.
+   The mockup uses a container query at 560px so both layouts are visible on this page. */
+@container (max-width:560px){
+  .shell-body{grid-template-columns:1fr}
+  .shell-body .workspace{order:2}
+  .shell-body .coach{order:1}
+  .shell-head{flex-direction:column}
+}
+.progress{
+  flex:1 1 160px;min-width:140px;height:22px;background:var(--green-900);
+  border:1px solid var(--line);border-radius:999px;overflow:hidden;position:relative;
+}
+.progress .bar{height:100%;background:var(--green-600);border-right:2px solid var(--gold)}
+.progress .txt{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:.72rem;color:var(--cream);font-weight:600;
+}
+
+/* ---------- coach panel (T4) ---------- */
+.coach-box{background:var(--green-800);border:1px solid var(--line);border-radius:8px;padding:.85rem}
+.coach-prompt{margin:0 0 .7rem;font-size:.92rem}
+.coach-box dl{display:grid;grid-template-columns:auto auto;gap:.2rem .75rem;margin:0 0 .8rem;font-size:.82rem}
+.coach-box dt{color:var(--sand)}
+.coach-box dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
+.status{
+  border:1px solid var(--brass);border-radius:6px;padding:.5rem .6rem;margin-bottom:.75rem;
+  background:rgba(201,179,106,.1);font-size:.86rem;min-height:44px;
+}
+.status .tone{font-weight:700;display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.07em;color:var(--brass)}
+.status.good{border-color:var(--gold);background:rgba(247,231,176,.14)}
+.status.retry{border-style:dashed}
+.status.neutral{border-color:var(--line);background:rgba(20,83,45,.55)}
+.earned{font-size:.82rem;color:var(--sand);margin:.3rem 0 0}
+details.math{margin-top:.7rem;border-top:1px solid var(--line);padding-top:.5rem}
+details.math summary{cursor:pointer;font-size:.85rem;color:var(--gold);min-height:44px;display:flex;align-items:center}
+details.math table{width:100%;border-collapse:collapse;font-size:.78rem;margin-top:.4rem}
+details.math td,details.math th{border-bottom:1px solid var(--line);padding:.2rem .3rem;text-align:left}
+details.math td:last-child,details.math th:last-child{text-align:right;font-variant-numeric:tabular-nums}
+
+/* ---------- lesson list (S2) ---------- */
+.lesson-list{list-style:none;margin:0;padding:0;display:grid;gap:.5rem}
+.lesson-row{
+  display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;
+  background:var(--green-800);border:1px solid var(--line);border-radius:8px;padding:.6rem .8rem;
+}
+.lesson-row .mark{font-size:1.1rem;width:1.4rem;text-align:center;color:var(--gold)}
+.lesson-row .ttl{flex:1 1 220px;min-width:0}
+.lesson-row .ttl b{display:block;font-size:.95rem;color:var(--cream)}
+.lesson-row .ttl span{font-size:.76rem;color:var(--sand)}
+.lesson-row.current{border-color:var(--gold);background:rgba(247,231,176,.1)}
+.lesson-row.done .mark{color:var(--sand)}
+.promise{font-size:.95rem;margin:.25rem 0 1rem;color:var(--cream)}
+
+/* accordion (S1) */
+.acc{border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.acc details{border-bottom:1px solid var(--line)}
+.acc details:last-child{border-bottom:0}
+.acc summary{
+  padding:.6rem .8rem;background:var(--green-700);color:var(--gold);cursor:pointer;
+  font-size:.9rem;min-height:44px;display:flex;align-items:center;
+}
+.acc .body{padding:.7rem .8rem;background:var(--green-800);font-size:.86rem}
+.rules-table{width:100%;border-collapse:collapse;font-size:.84rem}
+.rules-table th,.rules-table td{border-bottom:1px solid #2d6a42;padding:.35rem .5rem;text-align:left}
+
+/* offcanvas */
+.offcanvas-demo{position:relative;overflow:hidden;border-radius:8px}
+.offcanvas{
+  position:absolute;top:0;right:0;bottom:0;width:min(340px,80%);
+  background:var(--green-800);border-left:2px solid var(--brass);padding:.85rem;
+  overflow-y:auto;box-shadow:-8px 0 24px rgba(0,0,0,.4);
+}
+.offcanvas header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.7rem}
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.45)}
+
+/* pegging strip (T7/T8) */
+.peg-strip{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;margin-bottom:.75rem}
+.count-chip{
+  border:2px solid var(--brass);border-radius:8px;padding:.35rem .7rem;
+  font-weight:700;color:var(--gold);font-size:.95rem;white-space:nowrap;
+}
+.seq{display:flex;gap:.35rem;flex-wrap:wrap;align-items:center}
+.seq .who{font-size:.66rem;color:var(--sand);display:block;text-align:center}
+
+/* log (T8) */
+.roundlog{list-style:none;margin:.5rem 0 0;padding:0;font-size:.8rem;max-height:180px;overflow:auto}
+.roundlog li{display:flex;justify-content:space-between;gap:.75rem;padding:.22rem 0;border-bottom:1px solid rgba(31,107,58,.5)}
+.roundlog .pts{color:var(--gold);font-weight:700}
+.roundlog .who{color:var(--sand);font-size:.72rem}
+
+/* notices */
+.training-notice{
+  border:1px dashed var(--brass);border-radius:6px;padding:.45rem .7rem;
+  font-size:.8rem;color:var(--sand);background:rgba(201,179,106,.08);margin-bottom:.75rem;
+}
+.error-box{
+  border:2px solid var(--suit-red);background:rgba(155,28,28,.18);border-radius:8px;
+  padding:.8rem;margin-bottom:.75rem;
+}
+
+/* mastery (S4) */
+.mastery{list-style:none;margin:0 0 1rem;padding:0;display:grid;gap:.4rem}
+.mastery li{display:flex;justify-content:space-between;gap:1rem;background:var(--green-800);border:1px solid var(--line);border-radius:6px;padding:.45rem .7rem;font-size:.88rem}
+.pill{font-size:.72rem;border-radius:999px;padding:.1rem .55rem;border:1px solid var(--line);white-space:nowrap}
+.pill.ready{background:var(--gold);color:var(--green-900);border-color:var(--brass);font-weight:700}
+.pill.ready::before{content:"✓ "}
+.pill.practised{background:rgba(201,179,106,.2);color:var(--gold)}
+.pill.practised::before{content:"~ "}
+.pill.notyet{background:transparent;color:var(--sand);border-style:dashed}
+.pill.notyet::before{content:"○ "}
+
+/* state switcher */
+.switcher{display:flex;gap:.4rem;flex-wrap:wrap;margin:.75rem 0 .25rem}
+.switcher button{
+  font:inherit;font-size:.78rem;padding:.35rem .7rem;min-height:38px;cursor:pointer;
+  background:var(--green-800);color:var(--cream);border:1px solid var(--line);border-radius:999px;
+}
+.switcher button[aria-pressed="true"]{background:var(--gold);color:var(--green-900);border-color:var(--brass);font-weight:700}
+.switcher button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+[data-state-panel][hidden]{display:none}
+
+/* spec tables */
+table.spec{width:100%;border-collapse:collapse;font-size:.82rem;margin-top:.6rem}
+table.spec th,table.spec td{border:1px solid var(--line);padding:.4rem .55rem;text-align:left;vertical-align:top}
+table.spec th{background:var(--green-800);color:var(--gold)}
+
+pre.dom{
+  background:#07271a;border:1px solid var(--line);border-radius:6px;padding:.7rem .8rem;
+  overflow-x:auto;font-size:.76rem;color:var(--cream);margin:.6rem 0 0;
+}
+pre.dom .k{color:var(--gold)}
+
+@media (max-width:900px){
+  .doc{grid-template-columns:1fr}
+  .toc{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line)}
+  .main{padding:1rem}
+}
+/* every animation in the real build sits inside this guard (A1.7 / X20) */
+@media (prefers-reduced-motion:no-preference){
+  .pc{transition:border-color .12s ease,background-color .12s ease}
+}
+</style>
+</head>
+<body>
+<div class="doc">
+
+<nav class="toc" aria-label="Mockup index">
+  <h2>Tutorial mockups</h2>
+  <p class="sub">CribbageX v0.4.0 — static, non-functional</p>
+
+  <div class="grp">Phase 1 · live table</div>
+  <ol>
+    <li><a href="#u1">U1 · GroupList</a></li>
+    <li><a href="#u2">U2 · ScoreExplanation</a></li>
+    <li><a href="#u3">U3 · Three table panels</a></li>
+  </ol>
+
+  <div class="grp">Phase 4 · screens</div>
+  <ol>
+    <li><a href="#s2">S2 · Learn landing</a></li>
+    <li><a href="#s1">S1 · RulesReference</a></li>
+    <li><a href="#flagoff">D9 · Flag off</a></li>
+  </ol>
+
+  <div class="grp">Phase 4 · primitives</div>
+  <ol>
+    <li><a href="#t2">T2 · RoundMap</a></li>
+    <li><a href="#t3">T3 · SelectableHand</a></li>
+    <li><a href="#t4">T4 · CoachPanel</a></li>
+    <li><a href="#t1">T1 · TutorialShell</a></li>
+  </ol>
+
+  <div class="grp">Phase 4 · exercises</div>
+  <ol>
+    <li><a href="#t5">T5 · HandScoringExercise</a></li>
+    <li><a href="#t6">T6 · DiscardExercise</a></li>
+    <li><a href="#t7">T7 · PeggingExercise</a></li>
+  </ol>
+
+  <div class="grp">Phase 5–6</div>
+  <ol>
+    <li><a href="#t8">T8 · GuidedRoundView</a></li>
+    <li><a href="#s4">S4 · Completion handoff</a></li>
+  </ol>
+
+  <div class="grp">Cross-cutting</div>
+  <ol>
+    <li><a href="#narrow">320px stack</a></li>
+    <li><a href="#a11y">A1 checklist</a></li>
+    <li><a href="#palette">Palette &amp; tokens</a></li>
+  </ol>
+</nav>
+
+<main class="main">
+
+<div class="page-head">
+  <h1>CribbageX Interactive Tutorial — UI mockups</h1>
+  <p>
+    Static mockups for every component in
+    <code>detailed-tutorial-implementation-plan.md</code>. Work-item IDs (U1, T3, S4…)
+    match the plan and the source spec. Nothing here is wired to the engine: totals,
+    groups, and feedback text are hand-written stand-ins for values that must come from
+    <code>scoreHandDetailed</code>, <code>rankDiscards</code>, and <code>explainPegPlay</code> (invariant I1).
+  </p>
+  <p class="meta">
+    Self-contained: no CDN, no external images, no network. Card art is drawn in CSS as a
+    placeholder for <code>deck.getFaceImageUri()</code> PNGs; the text badge beside each card is a
+    real requirement (T3), not a mockup shortcut.
+  </p>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ U1 ═══ -->
+<section class="sec" id="u1">
+  <header>
+    <h2>GroupList <span class="tag">U1</span> <span class="tag">Task 1.1</span></h2>
+    <p class="meta">New: <code>src/components/GroupList.tsx</code> · renders <code>ReadonlyArray&lt;ScoringGroup&gt;</code> · no engine imports beyond the type</p>
+  </header>
+
+  <div class="switcher" role="group" aria-label="GroupList variants" data-switcher="u1">
+    <button type="button" aria-pressed="true" data-target="u1-list">variant="list"</button>
+    <button type="button" aria-pressed="false" data-target="u1-compact">variant="compact"</button>
+    <button type="button" aria-pressed="false" data-target="u1-agg">aggregatePairs</button>
+    <button type="button" aria-pressed="false" data-target="u1-active">activeGroupIds</button>
+  </div>
+
+  <div class="frame">
+    <div data-state-panel id="u1-list">
+      <div class="frame-label">The 29 hand — 5♥ 5♦ 5♣ J♠ + starter 5♠ · eight atomic groups</div>
+      <div class="grouplist">
+        <ol>
+          <li><span class="lbl">5 + 5 + 5 = 15</span><span class="pts">2</span></li>
+          <li><span class="lbl">5 + 5 + 5 = 15</span><span class="pts">2</span></li>
+          <li><span class="lbl">5 + 5 + 5 = 15</span><span class="pts">2</span></li>
+          <li><span class="lbl">5 + 5 + 5 = 15</span><span class="pts">2</span></li>
+          <li><span class="lbl">5 + J = 15</span><span class="pts">2</span></li>
+          <li><span class="lbl">5 + J = 15</span><span class="pts">2</span></li>
+          <li><span class="lbl">5 + J = 15</span><span class="pts">2</span></li>
+          <li><span class="lbl">5 + J = 15</span><span class="pts">2</span></li>
+          <li><span class="lbl">Pair of fives</span><span class="pts">2</span></li>
+          <li><span class="lbl">Pair of fives</span><span class="pts">2</span></li>
+          <li><span class="lbl">Pair of fives</span><span class="pts">2</span></li>
+          <li><span class="lbl">Pair of fives</span><span class="pts">2</span></li>
+          <li><span class="lbl">Pair of fives</span><span class="pts">2</span></li>
+          <li><span class="lbl">Pair of fives</span><span class="pts">2</span></li>
+          <li><span class="lbl">Nobs — jack of spades</span><span class="pts">1</span></li>
+        </ol>
+        <div class="total"><span>Total</span><span>29</span></div>
+      </div>
+    </div>
+
+    <div data-state-panel id="u1-compact" hidden>
+      <div class="frame-label">Compact — used on the <code>/play</code> table overlay · 7♣ 8♦ 9♥ 9♠ + starter 6♥</div>
+      <div class="grouplist compact" style="max-width:250px">
+        <ol>
+          <li><span class="lbl">7 + 8 = 15</span><span class="pts">2</span></li>
+          <li><span class="lbl">6 + 9 = 15</span><span class="pts">2</span></li>
+          <li><span class="lbl">6 + 9 = 15</span><span class="pts">2</span></li>
+          <li><span class="lbl">Pair of nines</span><span class="pts">2</span></li>
+          <li><span class="lbl">Run of four: 6-7-8-9</span><span class="pts">4</span></li>
+          <li><span class="lbl">Run of four: 6-7-8-9</span><span class="pts">4</span></li>
+        </ol>
+        <div class="total"><span>Total</span><span>16</span></div>
+      </div>
+    </div>
+
+    <div data-state-panel id="u1-agg" hidden>
+      <div class="frame-label">aggregatePairs (default true) — six atomic pair groups collapse to one row</div>
+      <div class="grouplist">
+        <ol>
+          <li><span class="lbl">Four fifteens with the fives</span><span class="pts">8</span></li>
+          <li><span class="lbl">Four fifteens with the jack</span><span class="pts">8</span></li>
+          <li><span class="lbl">Four of a kind — fives</span><span class="pts">12</span></li>
+          <li><span class="lbl">Nobs — jack of spades</span><span class="pts">1</span></li>
+        </ol>
+        <div class="total"><span>Total</span><span>29</span></div>
+      </div>
+      <div class="note">
+        <strong>X18.</strong> Aggregation is display only. The underlying atomic group ids stay the
+        highlight keys, and in an exercise the learner still credits <em>one pair at a time</em>.
+      </div>
+    </div>
+
+    <div data-state-panel id="u1-active" hidden>
+      <div class="frame-label">activeGroupIds — worked-example reveal, or groups the learner has found</div>
+      <div class="grouplist">
+        <ol>
+          <li class="active"><span class="lbl">7 + 8 = 15</span><span class="pts">2</span></li>
+          <li class="active"><span class="lbl">6 + 9 = 15</span><span class="pts">2</span></li>
+          <li><span class="lbl">6 + 9 = 15</span><span class="pts">2</span></li>
+          <li class="active"><span class="lbl">Pair of nines</span><span class="pts">2</span></li>
+          <li><span class="lbl">Run of four: 6-7-8-9</span><span class="pts">4</span></li>
+          <li><span class="lbl">Run of four: 6-7-8-9</span><span class="pts">4</span></li>
+        </ol>
+        <div class="total"><span>Total</span><span>16</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Never colour alone.</strong> Every row carries its numeral, and the active marker is a
+    <code>▸</code> glyph plus an outline — not a hue change.
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ U2 ═══ -->
+<section class="sec" id="u2">
+  <header>
+    <h2>ScoreExplanation <span class="tag">U2</span> <span class="tag">Task 1.2</span></h2>
+    <p class="meta">Modified: <code>src/components/ScoreExplanation.tsx</code> · prop contract is a superset of today's, so <code>Cribbage.tsx</code> compiles unchanged</p>
+  </header>
+
+  <div class="frame" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1rem">
+    <div>
+      <div class="frame-label">title="Your hand" · isCrib=false</div>
+      <div class="card-surface scoreExplanation">
+        <h4>Your hand</h4>
+        <div class="hand" style="margin-bottom:.6rem">
+          <span class="pc small static" data-c="7C"></span>
+          <span class="pc small static" data-c="8D"></span>
+          <span class="pc small static" data-c="9H"></span>
+          <span class="pc small static" data-c="9S"></span>
+          <span class="pc small static" data-c="6H" data-starter="1"></span>
+        </div>
+        <div class="grouplist compact">
+          <ol>
+            <li><span class="lbl">7 + 8 = 15</span><span class="pts">2</span></li>
+            <li><span class="lbl">6 + 9 = 15</span><span class="pts">2</span></li>
+            <li><span class="lbl">6 + 9 = 15</span><span class="pts">2</span></li>
+            <li><span class="lbl">Pair of nines</span><span class="pts">2</span></li>
+            <li><span class="lbl">Run of four: 6-7-8-9</span><span class="pts">4</span></li>
+            <li><span class="lbl">Run of four: 6-7-8-9</span><span class="pts">4</span></li>
+          </ol>
+          <div class="total"><span>Total</span><span class="scoreExplanation-total">16</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="frame-label">title="Crib" · isCrib=true · five-card flush only</div>
+      <div class="card-surface scoreExplanation">
+        <h4>Crib</h4>
+        <div class="hand" style="margin-bottom:.6rem">
+          <span class="pc small static" data-c="2H"></span>
+          <span class="pc small static" data-c="4H"></span>
+          <span class="pc small static" data-c="9H"></span>
+          <span class="pc small static" data-c="KH"></span>
+          <span class="pc small static" data-c="6H" data-starter="1"></span>
+        </div>
+        <div class="grouplist compact">
+          <ol>
+            <li><span class="lbl">2 + 4 + 9 = 15</span><span class="pts">2</span></li>
+            <li><span class="lbl">6 + 9 = 15</span><span class="pts">2</span></li>
+            <li><span class="lbl">Flush — five hearts</span><span class="pts">5</span></li>
+          </ol>
+          <div class="total"><span>Total</span><span class="scoreExplanation-total">9</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <table class="spec">
+    <caption class="sr-only">ScoreExplanation guard behaviour</caption>
+    <thead><tr><th>Condition</th><th>Renders</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td><code>hand.length === 0</code></td><td><code>null</code></td><td>X1 / B8 — the old <code>GameOverModal</code> stub passed an empty hand</td></tr>
+      <tr><td><code>total &lt; 0</code></td><td><code>null</code></td><td>X3 — scores are <code>-1</code> between rounds (<code>resetGame</code>)</td></tr>
+      <tr><td>prop total ≠ derived total</td><td>the <strong>prop</strong>, plus one <code>console.log</code></td><td>X2 — the engine ledger wins; never show two numbers</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ U3 ═══ -->
+<section class="sec" id="u3">
+  <header>
+    <h2>Three explanation panels on <code>/play</code> <span class="tag">U3</span> <span class="tag">Task 1.3</span></h2>
+    <p class="meta">Modified: <code>src/Cribbage.tsx</code>, <code>src/App.css</code> · the table is a fixed 900×800 absolute canvas (gap B6), so these are positioned, not flow</p>
+  </header>
+
+  <div class="switcher" role="group" aria-label="Table layout options" data-switcher="u3">
+    <button type="button" aria-pressed="true" data-target="u3-three">Three panels (primary)</button>
+    <button type="button" aria-pressed="false" data-target="u3-seg">Segmented fallback (R8)</button>
+  </div>
+
+  <div class="frame">
+    <div data-state-panel id="u3-three">
+      <div class="frame-label">Show phase · <code>showPlayer</code> + <code>showOpponent</code> + <code>showCrib</code> all true · true 900×800 geometry, scaled to fit</div>
+      <div class="table-scaler">
+        <div class="table-canvas">
+          <div class="tbl-board zone" style="left:820px;top:20px;width:64px;height:760px">
+            <div class="peg p" style="top:22%"></div>
+            <div class="peg p" style="top:26%"></div>
+            <div class="peg o" style="top:40%"></div>
+            <div class="peg o" style="top:44%"></div>
+          </div>
+          <span class="tbl-label" style="left:20px;top:14px">Opponent 61</span>
+          <span class="tbl-label" style="left:20px;top:744px">You 74</span>
+
+          <!-- opponent saved hand -->
+          <div class="zone" style="left:20px;top:40px">
+            <div class="hand">
+              <span class="pc small static" data-c="3S"></span>
+              <span class="pc small static" data-c="4C"></span>
+              <span class="pc small static" data-c="5D"></span>
+              <span class="pc small static" data-c="JH"></span>
+            </div>
+          </div>
+          <!-- starter + crib -->
+          <div class="zone" style="left:20px;top:150px">
+            <span class="tbl-label" style="position:static;display:block;margin-bottom:.2rem">Starter</span>
+            <div class="hand"><span class="pc small static" data-c="6H"></span></div>
+          </div>
+          <div class="zone" style="left:470px;top:150px">
+            <span class="tbl-label" style="position:static;display:block;margin-bottom:.2rem">Crib</span>
+            <div class="hand">
+              <span class="pc small static" data-c="2H"></span>
+              <span class="pc small static" data-c="4H"></span>
+              <span class="pc small static" data-c="9H"></span>
+              <span class="pc small static" data-c="KH"></span>
+            </div>
+          </div>
+          <!-- player saved hand -->
+          <div class="zone" style="left:20px;top:540px">
+            <div class="hand">
+              <span class="pc small static" data-c="7C"></span>
+              <span class="pc small static" data-c="8D"></span>
+              <span class="pc small static" data-c="9H"></span>
+              <span class="pc small static" data-c="9S"></span>
+            </div>
+          </div>
+
+          <!-- U3 panels at the plan's starting coordinates -->
+          <div class="panel-show" style="top:250px;left:170px">
+            <h4>Your hand <span style="font-weight:400;color:var(--sand)">· 250 / 170</span></h4>
+            <div class="grouplist compact">
+              <ol>
+                <li><span>7 + 8 = 15</span><span class="pts">2</span></li>
+                <li><span>6 + 9 = 15</span><span class="pts">2</span></li>
+                <li><span>6 + 9 = 15</span><span class="pts">2</span></li>
+                <li><span>Pair of nines</span><span class="pts">2</span></li>
+                <li><span>Run of four: 6-7-8-9</span><span class="pts">4</span></li>
+                <li><span>Run of four: 6-7-8-9</span><span class="pts">4</span></li>
+              </ol>
+              <div class="total"><span>Total</span><span>16</span></div>
+            </div>
+          </div>
+          <div class="panel-show" style="top:250px;left:470px">
+            <h4>Crib <span style="font-weight:400;color:var(--sand)">· 250 / 470</span></h4>
+            <div class="grouplist compact">
+              <ol>
+                <li><span>2 + 4 + 9 = 15</span><span class="pts">2</span></li>
+                <li><span>6 + 9 = 15</span><span class="pts">2</span></li>
+                <li><span>Flush — five hearts</span><span class="pts">5</span></li>
+              </ol>
+              <div class="total"><span>Total</span><span>9</span></div>
+            </div>
+          </div>
+          <div class="panel-show" style="top:640px;left:170px">
+            <h4>Opponent <span style="font-weight:400;color:var(--sand)">· 640 / 170</span></h4>
+            <div class="grouplist compact">
+              <ol>
+                <li><span>4 + 5 + 6 = 15</span><span class="pts">2</span></li>
+                <li><span>5 + J = 15</span><span class="pts">2</span></li>
+                <li><span>Run of four: 3-4-5-6</span><span class="pts">4</span></li>
+                <li><span>Nobs — jack of hearts</span><span class="pts">1</span></li>
+              </ol>
+              <div class="total"><span>Total</span><span>9</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="note warn">
+        <strong>This is the thing to check in the browser, not in a mockup.</strong> The crib panel at
+        <code>250 / 470</code> sits directly under the crib cards, and a five-group hand grows the
+        panels downward. U3 fails if any panel overlaps the board (<code>left: 850px</code>), the
+        pegging row, or another panel — at 100% <em>and</em> 200% zoom. If it cannot be made to fit,
+        take the segmented fallback (R8) rather than shrinking the type.
+      </div>
+    </div>
+
+    <div data-state-panel id="u3-seg" hidden>
+      <div class="frame-label">Fallback if three panels cannot fit — decide during task 1.3, not later</div>
+      <div class="table-scaler">
+        <div class="table-canvas">
+          <div class="tbl-board zone" style="left:820px;top:20px;width:64px;height:760px">
+            <div class="peg p" style="top:22%"></div><div class="peg o" style="top:44%"></div>
+          </div>
+          <div class="zone" style="left:20px;top:40px">
+            <div class="hand">
+              <span class="pc small static" data-c="3S"></span><span class="pc small static" data-c="4C"></span>
+              <span class="pc small static" data-c="5D"></span><span class="pc small static" data-c="JH"></span>
+            </div>
+          </div>
+          <div class="zone" style="left:20px;top:150px">
+            <div class="hand"><span class="pc small static" data-c="6H"></span></div>
+          </div>
+          <div class="zone" style="left:20px;top:540px">
+            <div class="hand">
+              <span class="pc small static" data-c="7C"></span><span class="pc small static" data-c="8D"></span>
+              <span class="pc small static" data-c="9H"></span><span class="pc small static" data-c="9S"></span>
+            </div>
+          </div>
+          <div class="panel-show" style="top:250px;left:170px;max-width:300px">
+            <div class="switcher" style="margin:0 0 .4rem" role="group" aria-label="Which count to explain">
+              <button type="button" aria-pressed="true">You</button>
+              <button type="button" aria-pressed="false">Opponent</button>
+              <button type="button" aria-pressed="false">Crib</button>
+            </div>
+            <div class="grouplist compact">
+              <ol>
+                <li><span>7 + 8 = 15</span><span class="pts">2</span></li>
+                <li><span>6 + 9 = 15</span><span class="pts">2</span></li>
+                <li><span>6 + 9 = 15</span><span class="pts">2</span></li>
+                <li><span>Pair of nines</span><span class="pts">2</span></li>
+                <li><span>Run of four: 6-7-8-9</span><span class="pts">4</span></li>
+                <li><span>Run of four: 6-7-8-9</span><span class="pts">4</span></li>
+              </ol>
+              <div class="total"><span>Total</span><span>16</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="note">
+        One panel, three tabs. Costs a click to compare two counts, but it cannot collide with the
+        board and it survives 200% zoom.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ S2 ═══ -->
+<section class="sec" id="s2">
+  <header>
+    <h2>Learn landing <span class="tag">S2</span> <span class="tag">Task 4.5</span></h2>
+    <p class="meta">Modified: <code>src/screens/Learn.tsx</code> · removes the four disabled "Coming soon" tiles · beginner-path panel renders only when <code>tutorialEnabled()</code></p>
+  </header>
+
+  <div class="switcher" role="group" aria-label="Progress state" data-switcher="s2">
+    <button type="button" aria-pressed="true" data-target="s2-fresh">No progress</button>
+    <button type="button" aria-pressed="false" data-target="s2-resume">Mid-path (resume)</button>
+  </div>
+
+  <div class="frame">
+    <div data-state-panel id="s2-fresh">
+      <header class="shell-head" style="border-radius:6px 6px 0 0">
+        <h1>Learn Cribbage</h1>
+        <button type="button" class="btn btn-outline">Back</button>
+      </header>
+      <div class="card-surface" style="border-radius:0 0 6px 6px">
+        <h2 style="font-size:1.1rem">New to cribbage?</h2>
+        <p class="promise">Learn your first round in about 15&nbsp;minutes, or the whole path in about half an hour.</p>
+        <div class="btn-row" style="margin-bottom:1rem">
+          <button type="button" class="btn btn-primary">Start beginner path</button>
+        </div>
+
+        <p class="meta" style="margin-bottom:.35rem">Every lesson walks one part of this round:</p>
+        <ol class="roundmap" style="margin-bottom:1.2rem">
+          <li><span class="step">Deal</span></li><li class="sep">→</li>
+          <li><span class="step">Discard</span></li><li class="sep">→</li>
+          <li><span class="step">Starter</span></li><li class="sep">→</li>
+          <li><span class="step">Pegging</span></li><li class="sep">→</li>
+          <li><span class="step">Show</span></li><li class="sep">→</li>
+          <li><span class="step">Crib</span></li>
+        </ol>
+
+        <ul class="lesson-list">
+          <li class="lesson-row"><span class="mark" aria-hidden="true">○</span><span class="ttl"><b>1. The shape of a round</b><span>2 min · not started</span></span><button type="button" class="btn">Start</button></li>
+          <li class="lesson-row"><span class="mark" aria-hidden="true">○</span><span class="ttl"><b>2. Count a hand</b><span>5 min · not started</span></span><button type="button" class="btn">Start</button></li>
+          <li class="lesson-row"><span class="mark" aria-hidden="true">○</span><span class="ttl"><b>3. The crib and the discard</b><span>3 min · not started</span></span><button type="button" class="btn">Start</button></li>
+          <li class="lesson-row"><span class="mark" aria-hidden="true">○</span><span class="ttl"><b>4. Peg to 31</b><span>4 min · not started</span></span><button type="button" class="btn">Start</button></li>
+          <li class="lesson-row"><span class="mark" aria-hidden="true">○</span><span class="ttl"><b>5. Play a coached round</b><span>6 min · not started</span></span><button type="button" class="btn">Start</button></li>
+          <li class="lesson-row"><span class="mark" aria-hidden="true">○</span><span class="ttl"><b>6. Deal a coached round</b><span>5 min · not started</span></span><button type="button" class="btn">Start</button></li>
+          <li class="lesson-row"><span class="mark" aria-hidden="true">○</span><span class="ttl"><b>7. Ready-table checkpoint</b><span>2 min · not started</span></span><button type="button" class="btn">Start</button></li>
+        </ul>
+
+        <h3 style="font-size:.95rem;margin:1.2rem 0 .5rem">Quick practice</h3>
+        <div class="btn-row">
+          <button type="button" class="btn btn-outline">Counting practice</button>
+          <button type="button" class="btn btn-outline">Pegging practice</button>
+          <button type="button" class="btn btn-outline">Cribbage quirks</button>
+        </div>
+      </div>
+      <div class="note">
+        <strong>Lessons are never locked.</strong> A learner may jump to any lesson at any time.
+        Markers are <code>✓</code> / <code>→</code> / <code>○</code>, each with a visually-hidden text equivalent.
+      </div>
+    </div>
+
+    <div data-state-panel id="s2-resume" hidden>
+      <header class="shell-head" style="border-radius:6px 6px 0 0">
+        <h1>Learn Cribbage</h1>
+        <button type="button" class="btn btn-outline">Back</button>
+      </header>
+      <div class="card-surface" style="border-radius:0 0 6px 6px">
+        <p class="promise">Learn your first round in about 15&nbsp;minutes, or the whole path in about half an hour.</p>
+        <div class="btn-row" style="margin-bottom:1rem">
+          <button type="button" class="btn btn-primary">Resume: Peg to 31, step 3</button>
+          <button type="button" class="btn-link">Start over</button>
+        </div>
+        <ul class="lesson-list">
+          <li class="lesson-row done"><span class="mark" aria-hidden="true">✓</span><span class="ttl"><b>1. The shape of a round</b><span>2 min · <span class="sr-only">completed</span>complete</span></span><button type="button" class="btn btn-outline">Replay</button></li>
+          <li class="lesson-row done"><span class="mark" aria-hidden="true">✓</span><span class="ttl"><b>2. Count a hand</b><span>5 min · complete</span></span><button type="button" class="btn btn-outline">Replay</button></li>
+          <li class="lesson-row done"><span class="mark" aria-hidden="true">✓</span><span class="ttl"><b>3. The crib and the discard</b><span>5 min · complete</span></span><button type="button" class="btn btn-outline">Replay</button></li>
+          <li class="lesson-row current"><span class="mark" aria-hidden="true">→</span><span class="ttl"><b>4. Peg to 31</b><span>4 min · <span class="sr-only">current lesson, </span>step 3 of 6</span></span><button type="button" class="btn btn-primary">Resume</button></li>
+          <li class="lesson-row"><span class="mark" aria-hidden="true">○</span><span class="ttl"><b>5. Play a coached round</b><span>6 min · not started</span></span><button type="button" class="btn">Start</button></li>
+          <li class="lesson-row"><span class="mark" aria-hidden="true">○</span><span class="ttl"><b>6. Deal a coached round</b><span>5 min · not started</span></span><button type="button" class="btn">Start</button></li>
+          <li class="lesson-row"><span class="mark" aria-hidden="true">○</span><span class="ttl"><b>7. Ready-table checkpoint</b><span>2 min · not started</span></span><button type="button" class="btn">Start</button></li>
+        </ul>
+      </div>
+      <div class="note">
+        <strong>Start over</strong> sits behind a confirm and calls <code>clearTutorialProgress()</code> only —
+        it must not touch <code>preferences</code> or <code>stats</code>. Conversely the Stats screen's
+        "Clear statistics" now <em>preserves</em> tutorial progress (Q3, S-P5).
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ S1 ═══ -->
+<section class="sec" id="s1">
+  <header>
+    <h2>RulesReference + Rules offcanvas <span class="tag">S1</span> <span class="tag">Task 4.1</span></h2>
+    <p class="meta">New: <code>src/screens/RulesReference.tsx</code> · the existing accordion moves here verbatim — <code>Learn.test.tsx</code> asserts this copy</p>
+  </header>
+
+  <div class="frame">
+    <div class="frame-label">In <code>Learn.tsx</code> under <code>id="rules"</code> (unchanged copy)</div>
+    <div class="acc">
+      <details open><summary>Object of the game</summary><div class="body">Cribbage is a two-player race to 121 points. The first player to peg out — to reach or pass 121 — wins. Points come from the play (pegging), from counting each four-card hand, and from the crib.</div></details>
+      <details><summary>Deal and cut for dealer</summary><div class="body">Each player cuts a card. The low card deals first. After that the deal alternates. The dealer gives six cards to each player.</div></details>
+      <details><summary>Scoring reference</summary><div class="body">
+        <table class="rules-table">
+          <thead><tr><th>Combination</th><th>Points</th></tr></thead>
+          <tbody>
+            <tr><td>Each 15</td><td>2</td></tr>
+            <tr><td>Pair / three of a kind / four of a kind</td><td>2 / 6 / 12</td></tr>
+            <tr><td>Run</td><td>1 per card</td></tr>
+            <tr><td>Flush in hand (four cards)</td><td>4</td></tr>
+            <tr><td>Flush in hand with matching starter</td><td>5</td></tr>
+            <tr><td>Crib flush (five cards the same suit only)</td><td>5</td></tr>
+            <tr><td>Nobs (jack of the starter's suit)</td><td>1</td></tr>
+            <tr><td>His heels (jack as starter)</td><td>2 to the dealer</td></tr>
+          </tbody>
+        </table>
+      </div></details>
+      <details><summary>How the opponent plays</summary><div class="body">
+        <ul style="padding-left:1.2rem">
+          <li><strong>Easy</strong> — plays a reasonable card without looking ahead.</li>
+          <li><strong>Intermediate</strong> — counts the obvious points.</li>
+          <li><strong>Expert</strong> — maximises expected value on every discard.</li>
+        </ul>
+        <p>The same shuffle at every difficulty — only the opponent's strategy changes.</p>
+      </div></details>
+    </div>
+  </div>
+
+  <div class="frame offcanvas-demo" style="margin-top:1rem">
+    <div class="frame-label">Same component inside the lesson's Rules offcanvas (T1 header button)</div>
+    <div style="filter:blur(1px);opacity:.5" aria-hidden="true">
+      <div class="shell-head" style="border-radius:6px"><div><h1>Count a hand</h1><span class="stepcount">Step 4 of 9</span></div></div>
+      <div style="padding:1rem 0"><div class="hand"><span class="pc static" data-c="7C"></span><span class="pc static" data-c="8D"></span><span class="pc static" data-c="9H"></span><span class="pc static" data-c="9S"></span></div></div>
+    </div>
+    <div class="scrim"></div>
+    <div class="offcanvas">
+      <header><h3 style="font-size:1rem">Rules reference</h3><button type="button" class="btn btn-outline" style="min-height:40px">Close</button></header>
+      <div class="acc">
+        <details open><summary>The show</summary><div class="body">Hands are counted in order: non-dealer, then dealer, then the crib. The starter is shared by every count.</div></details>
+        <details><summary>The play</summary><div class="body">Players alternate laying cards. The running count must not exceed 31…</div></details>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Why an offcanvas, not a link.</strong> Opening <code>/learn#rules</code> would lose the lesson's
+    progress context. The offcanvas is the only focus trap in the feature and must return focus to its
+    trigger on close (A1.4).
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ flag ═══ -->
+<section class="sec" id="flagoff">
+  <header>
+    <h2>Learn with <code>VITE_TUTORIAL_PATH=off</code> <span class="tag">D9</span> <span class="tag">Task 6.2</span></h2>
+    <p class="meta">Internal-only build: today's rules page, no path panel. <code>/learn/:lessonId</code> redirects to <code>/learn</code>.</p>
+  </header>
+  <div class="frame">
+    <header class="shell-head" style="border-radius:6px 6px 0 0">
+      <h1>Learn Cribbage</h1>
+      <button type="button" class="btn btn-outline">Back</button>
+    </header>
+    <div class="card-surface" style="border-radius:0 0 6px 6px">
+      <div class="acc">
+        <details open><summary>Object of the game</summary><div class="body">Cribbage is a two-player race to 121 points…</div></details>
+        <details><summary>Deal and cut for dealer</summary><div class="body">Each player cuts a card. The low card deals first…</div></details>
+        <details><summary>Scoring reference</summary><div class="body">…</div></details>
+      </div>
+      <p class="meta" style="margin-top:.8rem">No beginner-path panel, no lesson list, no Quick Practice.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ T2 ═══ -->
+<section class="sec" id="t2">
+  <header>
+    <h2>RoundMap <span class="tag">T2</span> <span class="tag">Task 4.2</span></h2>
+    <p class="meta">New: <code>src/components/tutorial/RoundMap.tsx</code> · reused by the shell, the Learn landing, and the guided-round header</p>
+  </header>
+
+  <div class="frame">
+    <div class="frame-label">Highlighted phase = "show" · <code>aria-current="step"</code></div>
+    <ol class="roundmap">
+      <li class="done"><span class="step">Deal</span></li><li class="sep" aria-hidden="true">→</li>
+      <li class="done"><span class="step">Discard</span></li><li class="sep" aria-hidden="true">→</li>
+      <li class="done"><span class="step">Starter</span></li><li class="sep" aria-hidden="true">→</li>
+      <li class="done"><span class="step">Pegging</span></li><li class="sep" aria-hidden="true">→</li>
+      <li aria-current="step"><span class="step">Show<span class="sr-only"> — current phase</span></span></li><li class="sep" aria-hidden="true">→</li>
+      <li><span class="step">Crib</span></li>
+    </ol>
+
+    <div class="frame-label" style="margin-top:1.2rem">No highlight — the Learn landing uses this form</div>
+    <ol class="roundmap">
+      <li><span class="step">Deal</span></li><li class="sep" aria-hidden="true">→</li>
+      <li><span class="step">Discard</span></li><li class="sep" aria-hidden="true">→</li>
+      <li><span class="step">Starter</span></li><li class="sep" aria-hidden="true">→</li>
+      <li><span class="step">Pegging</span></li><li class="sep" aria-hidden="true">→</li>
+      <li><span class="step">Show</span></li><li class="sep" aria-hidden="true">→</li>
+      <li><span class="step">Crib</span></li>
+    </ol>
+  </div>
+
+  <div class="note">
+    Phase names stay visible at every width — no truncation to icons. The current phase carries a
+    <code>▸</code> text marker as well as the fill, and completed phases carry <code>✓</code>.
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ T3 ═══ -->
+<section class="sec" id="t3">
+  <header>
+    <h2>SelectableHand <span class="tag">T3</span> <span class="tag">Task 4.2</span></h2>
+    <p class="meta">New: <code>src/components/tutorial/SelectableHand.tsx</code> · a <strong>new</strong> component — <code>PlayingCard</code>/<code>CardHand</code> are absolutely-positioned <code>div</code>s with no accessible name and stay untouched for the table (gap B5)</p>
+  </header>
+
+  <div class="frame">
+    <div class="frame-label">Every card state · <code>mode="checkbox"</code></div>
+    <fieldset class="hand">
+      <legend>Your hand</legend>
+      <span class="pc" data-c="5H" data-mode="checkbox" data-state="idle"></span>
+      <span class="pc" data-c="5D" data-mode="checkbox" data-state="selected"></span>
+      <span class="pc" data-c="JS" data-mode="checkbox" data-state="credited"></span>
+      <span class="pc" data-c="9C" data-mode="checkbox" data-state="hinted"></span>
+      <span class="pc" data-c="KD" data-mode="checkbox" data-state="disabled"></span>
+    </fieldset>
+
+    <div class="frame-label" style="margin-top:1.2rem"><code>mode="radio"</code> — one pegging choice</div>
+    <fieldset class="hand">
+      <legend>Choose one card to play</legend>
+      <span class="pc" data-c="7S" data-mode="radio" data-state="idle"></span>
+      <span class="pc" data-c="8H" data-mode="radio" data-state="selected"></span>
+      <span class="pc" data-c="QC" data-mode="radio" data-state="disabled"></span>
+    </fieldset>
+
+    <div class="frame-label" style="margin-top:1.2rem"><code>mode="none"</code> — display only (starter, opponent hand). No buttons.</div>
+    <fieldset class="hand">
+      <legend>Starter</legend>
+      <span class="pc static" data-c="6H" data-mode="none"></span>
+    </fieldset>
+
+    <div class="frame-label" style="margin-top:1.2rem">X17 — deck art fails to load. The badge keeps every card identifiable and the layout holds.</div>
+    <fieldset class="hand">
+      <legend>Your hand</legend>
+      <span class="pc" data-c="5H" data-mode="checkbox" data-art="missing"></span>
+      <span class="pc" data-c="10D" data-mode="checkbox" data-art="missing"></span>
+      <span class="pc" data-c="JS" data-mode="checkbox" data-art="missing"></span>
+      <span class="pc" data-c="2C" data-mode="checkbox" data-art="missing"></span>
+    </fieldset>
+  </div>
+
+  <p class="meta" style="margin-top:.8rem">DOM contract the mockup stands in for:</p>
+  <pre class="dom">&lt;<span class="k">fieldset</span> class="tutorial-hand"&gt;
+  &lt;<span class="k">legend</span>&gt;Your hand&lt;/legend&gt;
+  &lt;<span class="k">button</span> type="button" aria-pressed="true"&gt;
+    &lt;<span class="k">img</span> src={deck.getFaceImageUri(card)} alt="" /&gt;
+    &lt;<span class="k">span</span> aria-hidden="true" class="tutorial-card-badge"&gt;5♥&lt;/span&gt;
+    &lt;<span class="k">span</span> class="visually-hidden"&gt;five of hearts, selected&lt;/span&gt;
+  &lt;/button&gt;
+  …
+&lt;/fieldset&gt;</pre>
+
+  <table class="spec">
+    <thead><tr><th>State</th><th>Visual</th><th>Accessible name suffix</th></tr></thead>
+    <tbody>
+      <tr><td><code>idle</code></td><td>no outline</td><td>—</td></tr>
+      <tr><td><code>selected</code></td><td>solid gold outline + <code>✓</code> on the badge</td><td>", selected"</td></tr>
+      <tr><td><code>credited</code></td><td>double brass outline + "counted"</td><td>", already counted"</td></tr>
+      <tr><td><code>hinted</code></td><td>dashed outline + "← hint"</td><td>", suggested by the hint"</td></tr>
+      <tr><td><code>disabled</code></td><td>dotted outline, dimmed, <code>✕</code></td><td>", cannot be played"</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <strong>Never hue alone</strong>, ≥ 44×44 tap target, native <code>Space</code>/<code>Enter</code> (no custom key
+    handler), <code>:focus-visible</code> outline, flex-wrap layout, and no mutation of the passed
+    <code>PCard</code>s. Lessons pass <code>new StdDeck("rc")</code> so skins keep working.
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ T4 ═══ -->
+<section class="sec" id="t4">
+  <header>
+    <h2>CoachPanel <span class="tag">T4</span> <span class="tag">Task 4.2</span></h2>
+    <p class="meta">New: <code>src/components/tutorial/CoachPanel.tsx</code> · one <code>aria-live="polite"</code> <code>role="status"</code> region per screen</p>
+  </header>
+
+  <div class="switcher" role="group" aria-label="Coach states" data-switcher="t4">
+    <button type="button" aria-pressed="true" data-target="t4-0">Tier 0 · neutral</button>
+    <button type="button" aria-pressed="false" data-target="t4-1">Tier 1 · nudge</button>
+    <button type="button" aria-pressed="false" data-target="t4-2">Tier 2 · point at a card</button>
+    <button type="button" aria-pressed="false" data-target="t4-3">Tier 3 · show me</button>
+    <button type="button" aria-pressed="false" data-target="t4-r">Retry feedback</button>
+  </div>
+
+  <div class="frame" style="max-width:420px">
+    <div data-state-panel id="t4-0">
+      <div class="coach-box">
+        <h2>Coach</h2>
+        <p class="coach-prompt">Select the cards that add up to fifteen, then press <em>Count selected cards</em>.</p>
+        <dl>
+          <dt>Fifteens</dt><dd>0 of 3</dd>
+          <dt>Pairs</dt><dd>not started</dd>
+          <dt>Runs</dt><dd>0 of 2</dd>
+        </dl>
+        <div class="status neutral" role="status" aria-live="polite">
+          <span class="tone">Coach</span>
+          Take your time. Nothing here is timed.
+        </div>
+        <p class="earned">Counted so far: <strong>0</strong> points</p>
+        <div class="btn-row"><button type="button" class="btn btn-outline">Hint</button></div>
+      </div>
+    </div>
+
+    <div data-state-panel id="t4-1" hidden>
+      <div class="coach-box">
+        <h2>Coach</h2>
+        <p class="coach-prompt">Select the cards that add up to fifteen, then press <em>Count selected cards</em>.</p>
+        <dl>
+          <dt>Fifteens</dt><dd>1 of 3</dd>
+          <dt>Pairs</dt><dd>1 of 1</dd>
+          <dt>Runs</dt><dd>0 of 2</dd>
+        </dl>
+        <div class="status" role="status" aria-live="polite">
+          <span class="tone">Hint 1 of 3</span>
+          You found all the pairs. There is still a run in this hand.
+        </div>
+        <p class="earned">Counted so far: <strong>4</strong> points</p>
+        <div class="btn-row"><button type="button" class="btn btn-outline">Another hint</button></div>
+      </div>
+    </div>
+
+    <div data-state-panel id="t4-2" hidden>
+      <div class="coach-box">
+        <h2>Coach</h2>
+        <p class="coach-prompt">Select the cards that add up to fifteen, then press <em>Count selected cards</em>.</p>
+        <dl>
+          <dt>Fifteens</dt><dd>1 of 3</dd>
+          <dt>Pairs</dt><dd>1 of 1</dd>
+          <dt>Runs</dt><dd>0 of 2</dd>
+        </dl>
+        <div class="status" role="status" aria-live="polite">
+          <span class="tone">Hint 2 of 3</span>
+          Start from the seven of clubs — it is part of the run you have not counted.
+        </div>
+        <p class="earned">Counted so far: <strong>4</strong> points</p>
+        <div class="btn-row"><button type="button" class="btn btn-outline">Show me one group</button></div>
+      </div>
+    </div>
+
+    <div data-state-panel id="t4-3" hidden>
+      <div class="coach-box">
+        <h2>Coach</h2>
+        <p class="coach-prompt">Select the cards that add up to fifteen, then press <em>Count selected cards</em>.</p>
+        <div class="status good" role="status" aria-live="polite">
+          <span class="tone">Worked example</span>
+          Here is one of them: with the starter, 6♥ 7♣ 8♦ 9♥ is a run of four, so it scores 4.
+        </div>
+        <div class="hand" style="margin:.5rem 0">
+          <span class="pc small static hinted" data-c="6H"></span>
+          <span class="pc small static hinted" data-c="7C"></span>
+          <span class="pc small static hinted" data-c="8D"></span>
+          <span class="pc small static hinted" data-c="9H"></span>
+        </div>
+        <p class="earned">Counted so far: <strong>4</strong> points</p>
+        <div class="btn-row"><button type="button" class="btn btn-outline" aria-disabled="true">Show me one group</button></div>
+        <p class="meta">Tier 3 saturates — pressing again does nothing.</p>
+      </div>
+    </div>
+
+    <div data-state-panel id="t4-r" hidden>
+      <div class="coach-box">
+        <h2>Coach</h2>
+        <p class="coach-prompt">Select the cards that add up to fifteen, then press <em>Count selected cards</em>.</p>
+        <dl>
+          <dt>Fifteens</dt><dd>1 of 3</dd>
+          <dt>Pairs</dt><dd>1 of 1</dd>
+          <dt>Runs</dt><dd>0 of 2</dd>
+        </dl>
+        <div class="status retry" role="status" aria-live="polite">
+          <span class="tone">Not this time</span>
+          7♣ and 9♥ add up to 16, so that pair of cards is not a fifteen. Your earlier finds are safe.
+        </div>
+        <p class="earned">Counted so far: <strong>4</strong> points</p>
+        <div class="btn-row"><button type="button" class="btn btn-outline">Hint</button></div>
+        <details class="math">
+          <summary>Show the math</summary>
+          <table>
+            <tr><th>Card</th><th>Value</th></tr>
+            <tr><td>7 of clubs</td><td>7</td></tr>
+            <tr><td>9 of hearts</td><td>9</td></tr>
+            <tr><td><strong>Selected total</strong></td><td><strong>16</strong></td></tr>
+          </table>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Tone is binding (C5).</strong> Never "Wrong", "Error", or "Suboptimal"; never a bare
+    expected-value number as the whole explanation. The reason for a refused selection is
+    <em>derived</em> from the engine (value sum, ranks, adjacency), not authored per scenario.
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ T1 ═══ -->
+<section class="sec" id="t1">
+  <header>
+    <h2>TutorialShell <span class="tag">T1</span> <span class="tag">Task 4.4</span></h2>
+    <p class="meta">New: <code>src/components/tutorial/TutorialShell.tsx</code> · frame for every step · <code>md={8}</code> workspace + <code>md={4}</code> coach, flow layout only (gap B6)</p>
+  </header>
+
+  <div class="frame">
+    <div class="frame-label">Lesson 2 · step 4 of 9 · a <code>score-practice</code> step in progress</div>
+    <div class="shell">
+      <div class="shell-head">
+        <div>
+          <h1>Count a hand</h1>
+          <span class="stepcount">Step 4 of 9 — find the runs</span>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn btn-outline">Rules</button>
+          <button type="button" class="btn btn-outline">Exit</button>
+        </div>
+      </div>
+
+      <div class="shell-map">
+        <ol class="roundmap">
+          <li><span class="step">Deal</span></li><li class="sep" aria-hidden="true">→</li>
+          <li><span class="step">Discard</span></li><li class="sep" aria-hidden="true">→</li>
+          <li><span class="step">Starter</span></li><li class="sep" aria-hidden="true">→</li>
+          <li><span class="step">Pegging</span></li><li class="sep" aria-hidden="true">→</li>
+          <li aria-current="step"><span class="step">Show<span class="sr-only"> — current phase</span></span></li><li class="sep" aria-hidden="true">→</li>
+          <li><span class="step">Crib</span></li>
+        </ol>
+      </div>
+
+      <div class="shell-body">
+        <div class="workspace">
+          <h2>Your hand</h2>
+          <fieldset class="hand" style="margin-bottom:.5rem">
+            <legend>Starter</legend>
+            <span class="pc static" data-c="6H" data-mode="none"></span>
+          </fieldset>
+          <fieldset class="hand" style="margin-bottom:.9rem">
+            <legend>Select the cards that score together</legend>
+            <span class="pc" data-c="7C" data-mode="checkbox" data-state="selected"></span>
+            <span class="pc" data-c="8D" data-mode="checkbox" data-state="selected"></span>
+            <span class="pc" data-c="9H" data-mode="checkbox" data-state="credited"></span>
+            <span class="pc" data-c="9S" data-mode="checkbox" data-state="credited"></span>
+          </fieldset>
+          <div class="btn-row" style="margin-bottom:.9rem">
+            <button type="button" class="btn btn-primary">Count selected cards</button>
+            <button type="button" class="btn btn-outline">Clear</button>
+          </div>
+          <h3 style="font-size:.9rem;margin-bottom:.4rem">Counted so far</h3>
+          <div class="grouplist">
+            <ol>
+              <li class="active"><span class="lbl">6 + 9 = 15</span><span class="pts">2</span></li>
+              <li class="active"><span class="lbl">Pair of nines</span><span class="pts">2</span></li>
+            </ol>
+            <div class="total"><span>Your running total</span><span>4</span></div>
+          </div>
+        </div>
+
+        <div class="coach">
+          <h2>Coach</h2>
+          <div class="coach-box">
+            <p class="coach-prompt">There are two runs hiding in this hand. Select the cards of one of them.</p>
+            <dl>
+              <dt>Fifteens</dt><dd>1 of 3</dd>
+              <dt>Pairs</dt><dd>1 of 1</dd>
+              <dt>Runs</dt><dd>0 of 2</dd>
+            </dl>
+            <div class="status good" role="status" aria-live="polite">
+              <span class="tone">Nice</span>
+              That is the pair of nines, for 2.
+            </div>
+            <p class="earned">Counted so far: <strong>4</strong> points</p>
+            <div class="btn-row"><button type="button" class="btn btn-outline">Hint</button></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="shell-foot">
+        <button type="button" class="btn btn-outline">Back</button>
+        <div class="progress" role="progressbar" aria-valuenow="43" aria-valuemin="0" aria-valuemax="100" aria-label="Lesson progress">
+          <div class="bar" style="width:43%"></div>
+          <span class="txt">3 of 7 steps · 43%</span>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn-link">Skip this step</button>
+          <button type="button" class="btn btn-primary" aria-disabled="true">Next</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Next is disabled</strong> while a practice step is <code>in-progress</code> — but
+    <code>Skip this step</code> is always available, and a skipped step is never recorded as complete
+    or as mastery. On <code>explain</code> / <code>round-map</code> / <code>recap</code> steps, Next is enabled immediately.
+  </div>
+  <div class="note">
+    <strong>Headings.</strong> One <code>&lt;h1&gt;</code> per screen (the lesson title); <code>&lt;h2&gt;</code> for
+    workspace and coach. Keyboard order is header → round map → workspace cards → coach → footer.
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ T5 ═══ -->
+<section class="sec" id="t5">
+  <header>
+    <h2>HandScoringExercise <span class="tag">T5</span> <span class="tag">Task 4.3</span></h2>
+    <p class="meta">Drives <code>score-example</code>, <code>score-practice</code>, checkpoint counting, <em>and</em> the guided round's show phase</p>
+  </header>
+
+  <div class="switcher" role="group" aria-label="Exercise modes" data-switcher="t5">
+    <button type="button" aria-pressed="true" data-target="t5-ex">score-example (reveal)</button>
+    <button type="button" aria-pressed="false" data-target="t5-pr">score-practice (graded)</button>
+    <button type="button" aria-pressed="false" data-target="t5-done">complete</button>
+  </div>
+
+  <div class="frame">
+    <div data-state-panel id="t5-ex">
+      <div class="frame-label">Scenario <code>fifteen-worked</code> — nothing auto-reveals; the learner drives it</div>
+      <div class="card-surface">
+        <fieldset class="hand" style="margin-bottom:.5rem"><legend>Starter</legend><span class="pc static" data-c="5S" data-mode="none"></span></fieldset>
+        <fieldset class="hand" style="margin-bottom:.9rem">
+          <legend>The hand</legend>
+          <span class="pc static" data-c="KD" data-mode="none" data-state="credited"></span>
+          <span class="pc static" data-c="QH" data-mode="none"></span>
+          <span class="pc static" data-c="4C" data-mode="none"></span>
+          <span class="pc static" data-c="2S" data-mode="none"></span>
+        </fieldset>
+        <div class="grouplist" style="margin-bottom:.9rem">
+          <ol>
+            <li class="active"><span class="lbl">5 + K = 15</span><span class="pts">2</span></li>
+          </ol>
+          <div class="total"><span>Revealed so far</span><span>2</span></div>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn btn-primary">Show the next combination</button>
+          <span class="meta" style="margin:0">1 of 2 shown</span>
+        </div>
+      </div>
+    </div>
+
+    <div data-state-panel id="t5-pr" hidden>
+      <div class="frame-label">Scenario <code>run-double</code> · a wrong submission just landed</div>
+      <div class="card-surface">
+        <fieldset class="hand" style="margin-bottom:.5rem"><legend>Starter</legend><span class="pc static" data-c="6H" data-mode="none"></span></fieldset>
+        <fieldset class="hand" style="margin-bottom:.9rem">
+          <legend>Select the cards that score together</legend>
+          <span class="pc" data-c="7C" data-mode="checkbox"></span>
+          <span class="pc" data-c="8D" data-mode="checkbox"></span>
+          <span class="pc" data-c="9H" data-mode="checkbox" data-state="credited"></span>
+          <span class="pc" data-c="9S" data-mode="checkbox" data-state="credited"></span>
+        </fieldset>
+        <div class="status retry" role="status" aria-live="polite" style="max-width:520px">
+          <span class="tone">Not this time</span>
+          7♣ and 9♥ are not consecutive ranks, so those two cards are not a run. The pair you already
+          found is still counted.
+        </div>
+        <div class="btn-row" style="margin:.6rem 0 .9rem">
+          <button type="button" class="btn btn-primary" aria-disabled="true">Count selected cards</button>
+          <button type="button" class="btn btn-outline">Clear</button>
+        </div>
+        <div class="grouplist">
+          <ol>
+            <li class="active"><span class="lbl">Pair of nines</span><span class="pts">2</span></li>
+          </ol>
+          <div class="total"><span>Your running total</span><span>2</span></div>
+        </div>
+        <p class="meta">Submit is disabled while the selection is empty. A wrong answer clears only
+          <code>selected</code> — never <code>found</code>.</p>
+      </div>
+    </div>
+
+    <div data-state-panel id="t5-done" hidden>
+      <div class="frame-label">Every required group found — the step completes and Next unlocks</div>
+      <div class="card-surface">
+        <fieldset class="hand" style="margin-bottom:.9rem">
+          <legend>Your hand — all counted</legend>
+          <span class="pc" data-c="7C" data-mode="checkbox" data-state="credited"></span>
+          <span class="pc" data-c="8D" data-mode="checkbox" data-state="credited"></span>
+          <span class="pc" data-c="9H" data-mode="checkbox" data-state="credited"></span>
+          <span class="pc" data-c="9S" data-mode="checkbox" data-state="credited"></span>
+        </fieldset>
+        <div class="status good" role="status" aria-live="polite" style="max-width:520px">
+          <span class="tone">That is the whole hand</span>
+          Sixteen points, and you found every combination yourself.
+        </div>
+        <div class="grouplist" style="margin-top:.7rem">
+          <ol>
+            <li class="active"><span class="lbl">7 + 8 = 15</span><span class="pts">2</span></li>
+            <li class="active"><span class="lbl">6 + 9 = 15</span><span class="pts">2</span></li>
+            <li class="active"><span class="lbl">6 + 9 = 15</span><span class="pts">2</span></li>
+            <li class="active"><span class="lbl">Pair of nines</span><span class="pts">2</span></li>
+            <li class="active"><span class="lbl">Run of four: 6-7-8-9</span><span class="pts">4</span></li>
+            <li class="active"><span class="lbl">Run of four: 6-7-8-9</span><span class="pts">4</span></li>
+          </ol>
+          <div class="total"><span>Total</span><span>16</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ T6 ═══ -->
+<section class="sec" id="t6">
+  <header>
+    <h2>DiscardExercise <span class="tag">T6</span> <span class="tag">Task 4.3</span></h2>
+    <p class="meta">Grades through <code>rankDiscards(hand, [], isPlayerCrib)</code> · a choice inside <code>acceptTopN</code> is a good choice</p>
+  </header>
+
+  <div class="switcher" role="group" aria-label="Discard states" data-switcher="t6">
+    <button type="button" aria-pressed="true" data-target="t6-pick">Choosing</button>
+    <button type="button" aria-pressed="false" data-target="t6-good">Confirmed · accepted</button>
+    <button type="button" aria-pressed="false" data-target="t6-off">Confirmed · outside top 3</button>
+  </div>
+
+  <div class="frame">
+    <div data-state-panel id="t6-pick">
+      <div class="frame-label">Scenario <code>discard-theirs</code> · crib owner stated <em>before</em> any choice is possible</div>
+      <div class="card-surface">
+        <p style="margin-top:0"><strong>This is the opponent's crib.</strong> Anything you throw helps them.</p>
+        <fieldset class="hand" style="margin:.8rem 0">
+          <legend>Choose two cards to throw</legend>
+          <span class="pc" data-c="5H" data-mode="checkbox"></span>
+          <span class="pc" data-c="5C" data-mode="checkbox"></span>
+          <span class="pc" data-c="6D" data-mode="checkbox"></span>
+          <span class="pc" data-c="7S" data-mode="checkbox" data-state="selected"></span>
+          <span class="pc" data-c="KH" data-mode="checkbox"></span>
+          <span class="pc" data-c="2C" data-mode="checkbox"></span>
+        </fieldset>
+        <div class="btn-row">
+          <button type="button" class="btn btn-primary" aria-disabled="true">Confirm two discards</button>
+          <span class="meta" style="margin:0">1 of 2 chosen</span>
+        </div>
+      </div>
+    </div>
+
+    <div data-state-panel id="t6-good" hidden>
+      <div class="frame-label">Accepted — rank 3 of 15, inside <code>acceptTopN: 3</code></div>
+      <div class="card-surface">
+        <div class="status good" role="status" aria-live="polite">
+          <span class="tone">Good throw</span>
+          Keeping both fives is right, and a seven and a two give their crib very little. The engine
+          would hang on to the seven instead of the king — with both fives, 5-6-7 is a run twice over.
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1rem;margin-top:.9rem">
+          <div>
+            <h3 style="font-size:.85rem;margin-bottom:.4rem">You kept</h3>
+            <div class="hand">
+              <span class="pc small static" data-c="5H"></span><span class="pc small static" data-c="5C"></span>
+              <span class="pc small static" data-c="6D"></span><span class="pc small static" data-c="KH"></span>
+            </div>
+            <p class="meta">Two fifteens with the king, and the pair — 6 before the starter.</p>
+          </div>
+          <div>
+            <h3 style="font-size:.85rem;margin-bottom:.4rem">The engine's best keep</h3>
+            <div class="hand">
+              <span class="pc small static" data-c="5H"></span><span class="pc small static" data-c="5C"></span>
+              <span class="pc small static" data-c="6D"></span><span class="pc small static" data-c="7S"></span>
+            </div>
+            <p class="meta">A run of three each way, and the pair — 8 before the starter.</p>
+          </div>
+        </div>
+        <details class="math">
+          <summary>Show the math</summary>
+          <table>
+            <tr><th>Keep</th><th>Expected</th></tr>
+            <tr><td>5♥ 5♣ 6♦ 7♠ <em>(best)</em></td><td>9.12</td></tr>
+            <tr><td>5♥ 5♣ 6♦ K♥ <em>(yours, rank 3)</em></td><td>8.04</td></tr>
+            <tr><td>6♦ 7♠ K♥ 2♣ <em>(worst of 15 — throws both fives)</em></td><td>2.90</td></tr>
+          </table>
+        </details>
+        <div class="btn-row" style="margin-top:.8rem">
+          <button type="button" class="btn btn-outline">Try another discard</button>
+          <button type="button" class="btn btn-primary">Next</button>
+        </div>
+      </div>
+    </div>
+
+    <div data-state-panel id="t6-off" hidden>
+      <div class="frame-label">Outside the tolerance — still no scolding</div>
+      <div class="card-surface">
+        <div class="status retry" role="status" aria-live="polite">
+          <span class="tone">Worth a rethink</span>
+          Throwing two fives into their crib hands them a pair plus a good chance of fifteens. Try
+          keeping the fives and letting the king go instead.
+        </div>
+        <div class="btn-row" style="margin-top:.8rem">
+          <button type="button" class="btn btn-primary">Try another discard</button>
+          <button type="button" class="btn-link">Skip this step</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <code>discard-yours</code> re-runs the <em>same six cards</em> with <code>isPlayerCrib: true</code>, so the
+    right answer changes and the learner sees why crib ownership matters.
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ T7 ═══ -->
+<section class="sec" id="t7">
+  <header>
+    <h2>PeggingExercise <span class="tag">T7</span> <span class="tag">Task 4.3</span></h2>
+    <p class="meta">All statements of fact come from <code>explainPegPlay</code> — never <code>rankPlays</code>, which is an EV heuristic with non-integer, sometimes negative values (spec 2.3.1)</p>
+  </header>
+
+  <div class="switcher" role="group" aria-label="Pegging tasks" data-switcher="t7">
+    <button type="button" aria-pressed="true" data-target="t7-legal">select-legal</button>
+    <button type="button" aria-pressed="false" data-target="t7-score">select-scoring</button>
+    <button type="button" aria-pressed="false" data-target="t7-seq">play-sequence</button>
+  </div>
+
+  <div class="frame">
+    <div data-state-panel id="t7-legal">
+      <div class="frame-label">Scenario <code>peg-legal</code> · count is 26 · graded feedback shown</div>
+      <div class="card-surface">
+        <div class="peg-strip">
+          <span class="count-chip">Count: 26</span>
+          <div class="seq">
+            <span><span class="pc small static" data-c="9D"></span><span class="who">them</span></span>
+            <span><span class="pc small static" data-c="8C"></span><span class="who">you</span></span>
+            <span><span class="pc small static" data-c="9S"></span><span class="who">them</span></span>
+          </div>
+        </div>
+        <fieldset class="hand" style="margin-bottom:.9rem">
+          <legend>Which of these can you play?</legend>
+          <span class="pc" data-c="2H" data-mode="checkbox" data-state="selected"></span>
+          <span class="pc" data-c="5S" data-mode="checkbox" data-state="selected"></span>
+          <span class="pc" data-c="KC" data-mode="checkbox" data-state="disabled"></span>
+          <span class="pc" data-c="7D" data-mode="checkbox" data-state="disabled"></span>
+        </fieldset>
+        <div class="status good" role="status" aria-live="polite">
+          <span class="tone">Both legal</span>
+          The two takes you to 28 and the five to 31. The king would make 36 and the seven 33, so
+          neither can be played.
+        </div>
+      </div>
+    </div>
+
+    <div data-state-panel id="t7-score" hidden>
+      <div class="frame-label">Scenario <code>peg-scoring</code> · single-select</div>
+      <div class="card-surface">
+        <div class="peg-strip">
+          <span class="count-chip">Count: 10</span>
+          <div class="seq">
+            <span><span class="pc small static" data-c="10H"></span><span class="who">them</span></span>
+          </div>
+        </div>
+        <fieldset class="hand" style="margin-bottom:.9rem">
+          <legend>Which one scores right now?</legend>
+          <span class="pc" data-c="5C" data-mode="radio" data-state="selected"></span>
+          <span class="pc" data-c="3D" data-mode="radio"></span>
+          <span class="pc" data-c="9S" data-mode="radio"></span>
+          <span class="pc" data-c="KH" data-mode="radio"></span>
+        </fieldset>
+        <div class="status good" role="status" aria-live="polite">
+          <span class="tone">That is the one</span>
+          That makes 15, so it scores 2.
+        </div>
+        <div class="btn-row" style="margin-top:.8rem">
+          <button type="button" class="btn btn-primary">Play the five of clubs</button>
+        </div>
+      </div>
+    </div>
+
+    <div data-state-panel id="t7-seq" hidden>
+      <div class="frame-label">Scenario <code>peg-go</code> · a go, the reset, and the last-card point</div>
+      <div class="card-surface">
+        <div class="peg-strip">
+          <span class="count-chip">Count: 30</span>
+          <div class="seq">
+            <span><span class="pc small static" data-c="8H"></span><span class="who">them</span></span>
+            <span><span class="pc small static" data-c="7C"></span><span class="who">you</span></span>
+            <span><span class="pc small static" data-c="6D"></span><span class="who">them</span></span>
+            <span><span class="pc small static" data-c="9S"></span><span class="who">you</span></span>
+          </div>
+        </div>
+        <div class="status" role="status" aria-live="polite">
+          <span class="tone">Go</span>
+          Neither of you can play without passing 31, so the count resets. You laid the last card, which
+          scores 1.
+        </div>
+        <ul class="roundlog" style="margin-top:.8rem">
+          <li><span>Run of three: 8-7-6 <span class="who">them</span></span><span class="pts">3</span></li>
+          <li><span>Run of four: 9-8-7-6 <span class="who">you</span></span><span class="pts">4</span></li>
+          <li><span>The last card <span class="who">you</span></span><span class="pts">1</span></li>
+        </ul>
+        <div class="btn-row" style="margin-top:.8rem">
+          <button type="button" class="btn btn-primary">Continue — new count from zero</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Out-of-order runs are a teaching moment.</strong> <code>explainPegPlay</code> returns run card
+    ids in <em>play order</em> so the coach can say "you played 5, then 3, then 4 — that is still a run
+    of three".
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ T8 ═══ -->
+<section class="sec" id="t8">
+  <header>
+    <h2>GuidedRoundView <span class="tag">T8</span> <span class="tag">Task 5.3</span></h2>
+    <p class="meta">Presentational wrapper over <code>GuidedRound.view()</code> · reuses <code>CribbageBoard</code>/<code>Peg</code> and <code>ScoreExplanation</code> unchanged</p>
+  </header>
+
+  <div class="switcher" role="group" aria-label="Guided round phases" data-switcher="t8">
+    <button type="button" aria-pressed="true" data-target="t8-discard">Discard (first-round)</button>
+    <button type="button" aria-pressed="false" data-target="t8-play">Pegging (first-round)</button>
+    <button type="button" aria-pressed="false" data-target="t8-count">Show — you count</button>
+    <button type="button" aria-pressed="false" data-target="t8-dealer">Starter (second-round)</button>
+    <button type="button" aria-pressed="false" data-target="t8-error">Error recovery</button>
+  </div>
+
+  <div class="frame">
+    <div data-state-panel id="t8-discard">
+      <div class="card-surface">
+        <div class="training-notice">
+          <strong>Training deal.</strong> These cards are arranged for the lesson, not shuffled. Real
+          games at every difficulty use the same fair shuffle. You can restart this round at any time —
+          and refreshing the page will restart it from the deal.
+        </div>
+        <ol class="roundmap" style="margin-bottom:.8rem">
+          <li class="done"><span class="step">Deal</span></li><li class="sep" aria-hidden="true">→</li>
+          <li aria-current="step"><span class="step">Discard<span class="sr-only"> — current phase</span></span></li><li class="sep" aria-hidden="true">→</li>
+          <li><span class="step">Starter</span></li><li class="sep" aria-hidden="true">→</li>
+          <li><span class="step">Pegging</span></li><li class="sep" aria-hidden="true">→</li>
+          <li><span class="step">Show</span></li><li class="sep" aria-hidden="true">→</li>
+          <li><span class="step">Crib</span></li>
+        </ol>
+        <p><strong>They deal, so the crib is theirs.</strong> You will lead the play and count first.</p>
+        <fieldset class="hand" style="margin:.8rem 0">
+          <legend>Choose two cards for their crib</legend>
+          <span class="pc" data-c="5S" data-mode="checkbox"></span>
+          <span class="pc" data-c="6C" data-mode="checkbox"></span>
+          <span class="pc" data-c="7H" data-mode="checkbox"></span>
+          <span class="pc" data-c="JD" data-mode="checkbox"></span>
+          <span class="pc" data-c="QH" data-mode="checkbox" data-state="selected"></span>
+          <span class="pc" data-c="2S" data-mode="checkbox" data-state="selected"></span>
+        </fieldset>
+        <div class="btn-row">
+          <button type="button" class="btn btn-primary">Confirm two discards</button>
+          <button type="button" class="btn btn-outline">Restart this round</button>
+        </div>
+      </div>
+    </div>
+
+    <div data-state-panel id="t8-play" hidden>
+      <div class="card-surface">
+        <div class="training-notice"><strong>Training deal.</strong> Arranged for the lesson, not shuffled.</div>
+        <div style="display:grid;grid-template-columns:1fr 130px;gap:1rem">
+          <div>
+            <div class="peg-strip">
+              <span class="count-chip">Count: 21</span>
+              <div class="seq">
+                <span><span class="pc small static" data-c="5S"></span><span class="who">you</span></span>
+                <span><span class="pc small static" data-c="4D"></span><span class="who">them</span></span>
+                <span><span class="pc small static" data-c="6C"></span><span class="who">you</span></span>
+                <span><span class="pc small static" data-c="6H"></span><span class="who">them</span></span>
+              </div>
+            </div>
+            <fieldset class="hand" style="margin-bottom:.8rem">
+              <legend>Your turn — choose one card</legend>
+              <span class="pc" data-c="7H" data-mode="radio" data-state="selected"></span>
+              <span class="pc" data-c="JD" data-mode="radio"></span>
+            </fieldset>
+            <div class="status" role="status" aria-live="polite">
+              <span class="tone">Coach</span>
+              Legal play — the seven would make 28. But your other card scores right now. Want a clue?
+            </div>
+            <div class="btn-row" style="margin-top:.8rem">
+              <button type="button" class="btn btn-primary">Play the seven of hearts</button>
+              <button type="button" class="btn btn-outline">Hint</button>
+              <button type="button" class="btn btn-outline">Restart this round</button>
+            </div>
+            <h3 style="font-size:.85rem;margin:1rem 0 .2rem">This round so far</h3>
+            <ul class="roundlog">
+              <li><span>Fifteen — 2 <span class="who">you</span></span><span class="pts">2</span></li>
+              <li><span>Run of three: 4-5-6 <span class="who">you</span></span><span class="pts">3</span></li>
+              <li><span>A pair of sixes <span class="who">them</span></span><span class="pts">2</span></li>
+            </ul>
+          </div>
+          <div>
+            <div class="frame-label">Board</div>
+            <div style="background:#3f2a17;border:1px solid #5d3f22;border-radius:8px;height:230px;position:relative">
+              <span style="position:absolute;width:9px;height:9px;border-radius:50%;background:var(--gold);left:25%;top:86%"></span>
+              <span style="position:absolute;width:9px;height:9px;border-radius:50%;background:var(--gold);left:25%;top:80%"></span>
+              <span style="position:absolute;width:9px;height:9px;border-radius:50%;background:#c05a5a;left:60%;top:86%"></span>
+            </div>
+            <p class="meta" style="text-align:center">You 5 · Them 2</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div data-state-panel id="t8-count" hidden>
+      <div class="card-surface">
+        <div class="training-notice"><strong>Training deal.</strong> Arranged for the lesson, not shuffled.</div>
+        <p><strong>You are the non-dealer, so you count first.</strong> Find every combination — the
+          engine already knows the total.</p>
+        <fieldset class="hand" style="margin:.6rem 0 .5rem"><legend>Starter</legend><span class="pc static" data-c="8D" data-mode="none"></span></fieldset>
+        <fieldset class="hand" style="margin-bottom:.9rem">
+          <legend>Your hand — select the cards that score together</legend>
+          <span class="pc" data-c="5S" data-mode="checkbox" data-state="credited"></span>
+          <span class="pc" data-c="6C" data-mode="checkbox" data-state="credited"></span>
+          <span class="pc" data-c="7H" data-mode="checkbox" data-state="credited"></span>
+          <span class="pc" data-c="JD" data-mode="checkbox"></span>
+        </fieldset>
+        <div class="btn-row" style="margin-bottom:.8rem">
+          <button type="button" class="btn btn-primary">Count selected cards</button>
+          <button type="button" class="btn btn-outline">Clear</button>
+        </div>
+        <div class="grouplist">
+          <ol>
+            <li class="active"><span class="lbl">Run of four: 5-6-7-8</span><span class="pts">4</span></li>
+          </ol>
+          <div class="total"><span>Found 1 of 4</span><span>4</span></div>
+        </div>
+        <p class="meta">Still to find: two fifteens and nobs — the jack of diamonds matches the
+          starter's suit.</p>
+        <p class="meta">Then: the opponent's hand and the crib are <em>shown</em> with
+          <code>ScoreExplanation</code> and a Continue button — the learner does not count those.</p>
+      </div>
+    </div>
+
+    <div data-state-panel id="t8-dealer" hidden>
+      <div class="card-surface">
+        <div class="training-notice"><strong>Training deal.</strong> Arranged for the lesson, not shuffled.</div>
+        <ol class="roundmap" style="margin-bottom:.8rem">
+          <li class="done"><span class="step">Deal</span></li><li class="sep" aria-hidden="true">→</li>
+          <li class="done"><span class="step">Discard</span></li><li class="sep" aria-hidden="true">→</li>
+          <li aria-current="step"><span class="step">Starter<span class="sr-only"> — current phase</span></span></li><li class="sep" aria-hidden="true">→</li>
+          <li><span class="step">Pegging</span></li><li class="sep" aria-hidden="true">→</li>
+          <li><span class="step">Show</span></li><li class="sep" aria-hidden="true">→</li>
+          <li><span class="step">Crib</span></li>
+        </ol>
+        <p><strong>You deal this round, so the crib is yours</strong> — last round it was theirs.</p>
+        <div class="hand" style="margin:.8rem 0"><span class="pc static" data-c="JH" data-mode="none"></span></div>
+        <div class="status good" role="status" aria-live="polite">
+          <span class="tone">His heels — 2 to you</span>
+          You turned a jack as the starter. That is <em>his heels</em> (also called his nibs) and it pays
+          the dealer 2 straight away. It is not part of anyone's hand count — that is nobs, which is the
+          jack in your <em>hand</em> matching the starter's suit.
+        </div>
+        <div class="btn-row" style="margin-top:.8rem">
+          <button type="button" class="btn btn-primary">Continue — they lead</button>
+          <button type="button" class="btn btn-outline">Restart this round</button>
+        </div>
+      </div>
+    </div>
+
+    <div data-state-panel id="t8-error" hidden>
+      <div class="card-surface">
+        <div class="error-box" role="status" aria-live="polite">
+          <h3 style="font-size:.95rem;margin-bottom:.3rem">This training deal could not continue</h3>
+          <p style="margin:.3rem 0 0;font-size:.88rem">
+            The round stopped at <code>over-31</code>. Nothing is broken in your game — restart the deal
+            and it will replay from the beginning.
+          </p>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn btn-primary">Restart this round</button>
+          <button type="button" class="btn btn-outline">Back to Learn</button>
+        </div>
+        <p class="meta" style="margin-top:.7rem">
+          X13 — reached when the engine emits <code>error</code> or the pump exceeds its 5,000-iteration
+          guard. Restart is the only recovery, and it is always present anyway.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════ S4 ═══ -->
+<section class="sec" id="s4">
+  <header>
+    <h2>Completion and handoff <span class="tag">S4</span> <span class="tag">Task 6.1</span></h2>
+    <p class="meta">Lesson 7 recap in <code>src/screens/Lesson.tsx</code> · the only tutorial code that may import <code>thePlayer</code> or <code>gameSlice</code> actions</p>
+  </header>
+
+  <div class="frame">
+    <div class="card-surface">
+      <h2 style="font-size:1.2rem;margin-bottom:.4rem">You are ready for a real game</h2>
+      <p style="margin-top:0">Here is where you stand. Nothing here is a grade — it just tells you what to
+        practise if you want to.</p>
+      <ul class="mastery">
+        <li><span>Round flow</span><span class="pill ready">ready</span></li>
+        <li><span>Hand counting</span><span class="pill ready">ready</span></li>
+        <li><span>The crib and the discard</span><span class="pill practised">practised</span></li>
+        <li><span>Pegging</span><span class="pill practised">practised</span></li>
+        <li><span>Nobs and his heels</span><span class="pill notyet">not yet</span></li>
+      </ul>
+      <div class="btn-row">
+        <button type="button" class="btn btn-primary">Play your first Easy game</button>
+        <button type="button" class="btn btn-outline">Practise pegging</button>
+        <button type="button" class="btn btn-outline">Rules reference</button>
+        <button type="button" class="btn-link">Back to Learn</button>
+      </div>
+    </div>
+  </div>
+
+  <table class="spec">
+    <thead><tr><th>State</th><th>Means</th><th>Recorded when</th></tr></thead>
+    <tbody>
+      <tr><td><span class="pill ready">ready</span></td><td>got it independently</td><td><code>attempts === 1 &amp;&amp; hintLevel &lt; 2</code></td></tr>
+      <tr><td><span class="pill practised">practised</span></td><td>got it with help</td><td>more attempts, or hint tier 2–3</td></tr>
+      <tr><td><span class="pill notyet">not yet</span></td><td>skipped or never attempted</td><td>skipped step, or concept never seen</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note warn">
+    <strong>The handoff dispatch order is load-bearing.</strong>
+    <code>savePreferences({difficulty:"easy"})</code> →
+    <code>thePlayer.resetForNewSession()</code> →
+    <code>dispatch(resetGameUi())</code> →
+    <code>dispatch(setDifficulty("easy"))</code> →
+    <code>navigate("/play")</code>.
+    <code>resetGameUi</code> returns <code>initialState</code> with <code>difficultyChosen:false</code>, so
+    <code>setDifficulty</code> must come after it — and because <code>difficultyChosen:true</code> suppresses the
+    modal, <code>Cribbage.tsx</code> will not call <code>resetForNewSession</code> for us.
+  </div>
+  <div class="note">
+    <strong>X15.</strong> A learner who skipped every step still sees this screen and the play button.
+    Never trap someone in the tutorial.
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ narrow ═══ -->
+<section class="sec" id="narrow">
+  <header>
+    <h2>320px stack <span class="tag">A1.8</span> <span class="tag">Task 4.4</span></h2>
+    <p class="meta">On narrow screens the coach column comes <strong>first</strong> (<code>order-md-last</code> on the workspace) so the instruction sits above the cards</p>
+  </header>
+
+  <div class="frame narrow">
+    <div class="frame-label">320px</div>
+    <div class="shell">
+      <div class="shell-head">
+        <div><h1 style="font-size:1.05rem">Count a hand</h1><span class="stepcount">Step 4 of 9</span></div>
+        <div class="btn-row"><button type="button" class="btn btn-outline" style="padding:.4rem .7rem">Rules</button><button type="button" class="btn btn-outline" style="padding:.4rem .7rem">Exit</button></div>
+      </div>
+      <div class="shell-map">
+        <ol class="roundmap">
+          <li class="done"><span class="step">Deal</span></li>
+          <li class="done"><span class="step">Discard</span></li>
+          <li class="done"><span class="step">Starter</span></li>
+          <li class="done"><span class="step">Pegging</span></li>
+          <li aria-current="step"><span class="step">Show</span></li>
+          <li><span class="step">Crib</span></li>
+        </ol>
+      </div>
+      <div class="shell-body">
+        <div class="coach">
+          <h2>Coach</h2>
+          <div class="coach-box">
+            <p class="coach-prompt">There are two runs hiding in this hand.</p>
+            <div class="status good" role="status" aria-live="polite"><span class="tone">Nice</span>That is the pair of nines, for 2.</div>
+            <div class="btn-row"><button type="button" class="btn btn-outline">Hint</button></div>
+          </div>
+        </div>
+        <div class="workspace">
+          <h2>Your hand</h2>
+          <fieldset class="hand" style="margin-bottom:.8rem">
+            <legend>Select the cards that score together</legend>
+            <span class="pc" data-c="7C" data-mode="checkbox"></span>
+            <span class="pc" data-c="8D" data-mode="checkbox"></span>
+            <span class="pc" data-c="9H" data-mode="checkbox" data-state="credited"></span>
+            <span class="pc" data-c="9S" data-mode="checkbox" data-state="credited"></span>
+          </fieldset>
+          <div class="btn-row"><button type="button" class="btn btn-primary">Count selected</button><button type="button" class="btn btn-outline">Clear</button></div>
+        </div>
+      </div>
+      <div class="shell-foot">
+        <button type="button" class="btn btn-outline">Back</button>
+        <div class="progress" role="progressbar" aria-valuenow="43" aria-valuemin="0" aria-valuemax="100" aria-label="Lesson progress">
+          <div class="bar" style="width:43%"></div><span class="txt">43%</span>
+        </div>
+        <div class="btn-row"><button type="button" class="btn-link">Skip</button><button type="button" class="btn btn-primary" aria-disabled="true">Next</button></div>
+      </div>
+    </div>
+  </div>
+  <p class="meta">The cards wrap rather than shrink below 44×44, and the workspace never scrolls horizontally.</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ a11y ═══ -->
+<section class="sec" id="a11y">
+  <header>
+    <h2>A1 acceptance checklist — where each item shows up <span class="tag">A1</span> <span class="tag">Task 6.3</span></h2>
+  </header>
+  <table class="spec">
+    <thead><tr><th>#</th><th>Criterion</th><th>Mockup</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Every lesson card is a real <code>&lt;button&gt;</code> with rank, suit, and state in its name</td><td><a href="#t3">T3</a></td></tr>
+      <tr><td>2</td><td>Rank and suit readable without colour and without art</td><td><a href="#t3">T3</a> (art-missing row)</td></tr>
+      <tr><td>3</td><td>One <code>aria-live="polite"</code> <code>role="status"</code> per screen; card movement not announced</td><td><a href="#t4">T4</a></td></tr>
+      <tr><td>4</td><td>Visible focus; focus order = visual order; only the Rules offcanvas traps focus</td><td><a href="#s1">S1</a>, <a href="#t1">T1</a></td></tr>
+      <tr><td>5</td><td>Tap targets ≥ 44×44 CSS px</td><td>all</td></tr>
+      <tr><td>6</td><td>Full keyboard completion of every lesson type</td><td><a href="#t5">T5</a>, <a href="#t6">T6</a>, <a href="#t7">T7</a></td></tr>
+      <tr><td>7</td><td>All motion inside <code>prefers-reduced-motion: no-preference</code>; no timer advances</td><td>stylesheet guard at the end of the CSS block</td></tr>
+      <tr><td>8</td><td>Usable at 320px and 200% zoom, no horizontal workspace scroll</td><td><a href="#narrow">320px stack</a></td></tr>
+      <tr><td>9</td><td>One <code>&lt;h1&gt;</code> per screen; <code>&lt;h2&gt;</code> for workspace and coach</td><td><a href="#t1">T1</a></td></tr>
+    </tbody>
+  </table>
+  <div class="note">
+    <strong>Invariant I5.</strong> There are no timers anywhere in these screens. Every advance is a
+    button press, which is both an accessibility requirement and the reason the lesson tests have no
+    async flake.
+  </div>
+  <div class="note">
+    <strong>Counting caveat for this page.</strong> Criteria 3 and 9 are <em>per screen</em>. This
+    catalogue stacks several mocked screens in one document, so it contains many
+    <code>&lt;h1&gt;</code>s and many <code>role="status"</code> regions. Check the rule inside a single
+    mockup, not across the page.
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════ palette ═══ -->
+<section class="sec" id="palette">
+  <header>
+    <h2>Palette and tokens <span class="tag">U5</span></h2>
+    <p class="meta">Appended to <code>src/App.css</code> under a "Score breakdown + tutorial" section header. No <code>!important</code>, no new CSS framework.</p>
+  </header>
+  <div class="frame">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:.6rem">
+      <div><div style="height:52px;border-radius:6px;background:#0d3b24;border:1px solid var(--line)"></div><code>#0d3b24</code></div>
+      <div><div style="height:52px;border-radius:6px;background:#14532d;border:1px solid var(--line)"></div><code>#14532d</code></div>
+      <div><div style="height:52px;border-radius:6px;background:#166534;border:1px solid var(--line)"></div><code>#166534</code></div>
+      <div><div style="height:52px;border-radius:6px;background:#f4efe2"></div><code>#f4efe2</code></div>
+      <div><div style="height:52px;border-radius:6px;background:#f7e7b0"></div><code>#f7e7b0</code></div>
+      <div><div style="height:52px;border-radius:6px;background:#d9c48a"></div><code>#d9c48a</code></div>
+      <div><div style="height:52px;border-radius:6px;background:#c9b36a"></div><code>#c9b36a</code></div>
+    </div>
+    <div class="note" style="margin-bottom:0">
+      The mockups add one colour outside this list: a red for heart and diamond pips, which in the real
+      build comes from the deck PNG, not from CSS.
+    </div>
+  </div>
+</section>
+
+<p class="meta" style="border-top:1px solid var(--line);padding-top:1rem">
+  Mockups only. No engine, no persistence, no routing. Every number shown is illustrative — in the
+  build it must come from <code>scoreHandDetailed</code>, <code>explainPegPlay</code>, or
+  <code>rankDiscards</code> (invariant I1).
+</p>
+
+</main>
+</div>
+
+<script>
+/* Expand <span class="pc" data-c="5H"> into the card markup the real component renders.
+   Keeps the source readable; the DOM contract is shown verbatim in the T3 section. */
+(function () {
+  var RANK_NAMES = {
+    A: "ace", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six", 7: "seven",
+    8: "eight", 9: "nine", 10: "ten", J: "jack", Q: "queen", K: "king"
+  };
+  var SUITS = {
+    H: { name: "hearts", glyph: "\u2665", colour: "red" },
+    D: { name: "diamonds", glyph: "\u2666", colour: "red" },
+    S: { name: "spades", glyph: "\u2660", colour: "black" },
+    C: { name: "clubs", glyph: "\u2663", colour: "black" }
+  };
+  var STATE_SUFFIX = {
+    idle: "",
+    selected: ", selected",
+    credited: ", already counted",
+    hinted: ", suggested by the hint",
+    disabled: ", cannot be played"
+  };
+
+  document.querySelectorAll(".pc[data-c]").forEach(function (el) {
+    var key = el.getAttribute("data-c");
+    var suitLetter = key.slice(-1);
+    var rank = key.slice(0, -1);
+    var suit = SUITS[suitLetter];
+    if (!suit) { return; }
+
+    var state = el.getAttribute("data-state") || "idle";
+    var mode = el.getAttribute("data-mode") || "none";
+    var missingArt = el.getAttribute("data-art") === "missing";
+    var isStarter = el.hasAttribute("data-starter");
+
+    var name = RANK_NAMES[rank] + " of " + suit.name + (STATE_SUFFIX[state] || "");
+    if (isStarter) { name += ", the starter"; }
+
+    el.classList.add(state === "idle" ? "pc-idle" : state);
+    el.innerHTML =
+      '<span class="pc-art ' + suit.colour + (missingArt ? " missing" : "") + '" aria-hidden="true">' +
+        rank + suit.glyph +
+      "</span>" +
+      '<span class="pc-badge" aria-hidden="true"><span class="rs"><span class="r">' +
+        rank + "</span>" + suit.glyph + "</span></span>" +
+      '<span class="sr-only">' + name + "</span>";
+
+    if (mode === "checkbox") {
+      el.setAttribute("role", "button");
+      el.setAttribute("tabindex", state === "disabled" ? "-1" : "0");
+      el.setAttribute("aria-pressed", String(state === "selected"));
+      if (state === "disabled") { el.setAttribute("aria-disabled", "true"); }
+    } else if (mode === "radio") {
+      el.setAttribute("role", "radio");
+      el.setAttribute("tabindex", state === "disabled" ? "-1" : "0");
+      el.setAttribute("aria-checked", String(state === "selected"));
+      if (state === "disabled") { el.setAttribute("aria-disabled", "true"); }
+    } else {
+      el.classList.add("static");
+    }
+  });
+
+  /* The /play mockups are drawn at the real 900x800 canvas size, then scaled to fit
+     the page so the pixel coordinates in the plan stay literal and comparable. */
+  function fitTables() {
+    document.querySelectorAll(".table-scaler").forEach(function (scaler) {
+      var canvas = scaler.querySelector(".table-canvas");
+      if (!canvas || scaler.clientWidth === 0) { return; }
+      var scale = Math.min(1, scaler.clientWidth / 900);
+      canvas.style.transform = "scale(" + scale + ")";
+      scaler.style.height = 800 * scale + "px";
+    });
+  }
+  fitTables();
+  window.addEventListener("resize", fitTables);
+
+  /* State switchers: show one panel at a time within a section. */
+  document.querySelectorAll("[data-switcher]").forEach(function (group) {
+    var buttons = group.querySelectorAll("button[data-target]");
+    buttons.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        buttons.forEach(function (other) {
+          var on = other === btn;
+          other.setAttribute("aria-pressed", String(on));
+          var panel = document.getElementById(other.getAttribute("data-target"));
+          if (panel) { panel.hidden = !on; }
+        });
+        fitTables();
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>

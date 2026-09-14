@@ -3,6 +3,7 @@ import { StdDeck } from './app/entities';
 import Cribbage from './Cribbage'
 import { Splash } from './screens/Splash'
 import { Learn } from './screens/Learn'
+import { Lesson } from './screens/Lesson'
 import { Stats } from './screens/Stats'
 import { FriendPlay } from './screens/FriendPlay'
 import './App.css'
@@ -36,6 +37,7 @@ export function AppRoutes() {
       <Route path='/' element={<Splash />} />
       <Route path='/play' element={<GameLayout><Cribbage deck={new StdDeck('rc')} /></GameLayout>} />
       <Route path='/learn' element={<Learn />} />
+      <Route path='/learn/:lessonId' element={<Lesson />} />
       <Route path='/stats' element={<Stats />} />
       <Route path='/friend' element={<FriendPlay />} />
       <Route path='/select' element={<GameLayout><Cribbage /></GameLayout>} />

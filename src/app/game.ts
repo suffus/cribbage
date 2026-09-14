@@ -1,4 +1,4 @@
-import {Card, Suit, Rank, rank_map, suit_map, Hand, Deck} from './entities'
+import {Card, Suit, Rank, rank_map, suit_map, Hand, Deck, cardKey, RANK_NAMES, SUIT_NAMES} from './entities'
 import type { Difficulty } from './difficulty'
 
 function getSubsets( n : number ) : Array<Array<number> > {
@@ -32,7 +32,7 @@ function scoreSubset( hand : Array<Card>, subset : Array<number> ) : number {
   return 0
 }
 
-export function countNobs( hand : Array<Card>, cutCard : Card | undefined ) : number {
+export function countNobs( hand : ReadonlyArray<Card>, cutCard : Card | undefined ) : number {
   if( !cutCard ) {
     return 0
   }
@@ -44,78 +44,322 @@ export function countNobs( hand : Array<Card>, cutCard : Card | undefined ) : nu
   return 0
 }
 
-function scoreHand( hand : Array<Card>, cutCard : Card | undefined, isCrib : boolean  ) : number {
-    let eH : Array<Card> = []
-    if( cutCard ) {
-      eH = [...hand, cutCard]
-    } else {
-      eH = hand
+export type ScoringCategory = "fifteen" | "pair" | "run" | "flush" | "nobs"
+
+export type ScoringGroup = {
+  /** `${category}:${cardIds.join("-")}` — unique within a result, stable across runs. */
+  id: string
+  category: ScoringCategory
+  /** cardKey values, ascending by rank then suit. */
+  cardIds: ReadonlyArray<string>
+  points: number
+  /** Plain-language, no punctuation-only output. e.g. "5 + K = 15", "Pair of fives",
+   *  "Run of three: 4-5-6", "Flush — five hearts", "Nobs — jack of hearts". */
+  label: string
+}
+
+export type HandScoreResult = {
+  total: number
+  groups: ReadonlyArray<ScoringGroup>
+  isCrib: boolean
+  starterIncluded: boolean
+}
+
+const CATEGORY_ORDER: Record<ScoringCategory, number> = {
+  fifteen: 0,
+  pair: 1,
+  run: 2,
+  flush: 3,
+  nobs: 4,
+}
+
+function sortCardsByRankThenSuit(cards: ReadonlyArray<Card>): Card[] {
+  return [...cards].sort((a, b) => {
+    const dR = a.rank - b.rank
+    if (dR !== 0) {
+      return dR
     }
-//    console.log("HAND=", eH)
-    const checkFlushSuit = hand[0].suit
-    let isFlush = true
-    hand.forEach( (c) => {if( c.suit !== checkFlushSuit ) {isFlush = false}} )
-    const nobScore = countNobs( hand, cutCard )
-    eH = eH.sort( (c1, c2) => c1.rank - c2.rank )
-    //console.log( eH )
-    let flushScore = 0
-    if (isFlush) {
-      if (!isCrib) {
-        flushScore = 4
-        if (cutCard && cutCard.suit === checkFlushSuit) {
-          flushScore += 1
-        }
-      } else if (cutCard && cutCard.suit === checkFlushSuit) {
-        flushScore = 5
+    return a.suit.localeCompare(b.suit)
+  })
+}
+
+function cardIdsOf(cards: ReadonlyArray<Card>): string[] {
+  return sortCardsByRankThenSuit(cards).map(cardKey)
+}
+
+function pluralRankName(rank: Rank): string {
+  const name = RANK_NAMES[rank]
+  if (name === "six") {
+    return "sixes"
+  }
+  return `${name}s`
+}
+
+function emitGroup(
+  sink: Array<ScoringGroup> | undefined,
+  category: ScoringCategory,
+  cards: ReadonlyArray<Card>,
+  points: number,
+  label: string,
+): void {
+  if (!sink) {
+    return
+  }
+  const cardIds = cardIdsOf(cards)
+  sink.push({
+    id: `${category}:${cardIds.join("-")}`,
+    category,
+    cardIds,
+    points,
+    label,
+  })
+}
+
+function cartesianOnePerRank(cardsByRank: ReadonlyArray<ReadonlyArray<Card>>): Card[][] {
+  let acc: Card[][] = [[]]
+  for (const group of cardsByRank) {
+    const next: Card[][] = []
+    for (const prefix of acc) {
+      for (const card of group) {
+        next.push([...prefix, card])
       }
     }
-    let runScore = 0
-    let j = 0 /// this will point to the end of the run
-    for( let i = 0; i < eH.length - 2; i = j + 1 ) {
-      let maxSame = 1
-      let runSame = 1
-      for( j = i + 1; j < eH.length && (eH[j].rank - eH[j-1].rank <=1); j++ ) {
-        if( eH[j].rank === eH[j-1].rank ) {
-          /// so to handle multiples of the same rank we note that identifying
-          /// the maximum number of identicall ranked cards will allow us to
-          /// determine the score based on sequence length
-          runSame++
-          if( runSame > maxSame ) {
-            maxSame = runSame
-          }
+    acc = next
+  }
+  return acc
+}
+
+function computeHandScore(
+  hand: ReadonlyArray<Card>,
+  cutCard: Card | undefined,
+  isCrib: boolean,
+  sink?: Array<ScoringGroup>,
+): number {
+  if (hand.length === 0) {
+    return 0
+  }
+  const eH = cutCard ? [...hand, cutCard] : [...hand]
+  const checkFlushSuit = hand[0].suit
+  let isFlush = true
+  hand.forEach((c) => { if (c.suit !== checkFlushSuit) { isFlush = false } })
+  const nobScore = countNobs(hand, cutCard)
+  eH.sort((c1, c2) => c1.rank - c2.rank)
+
+  let flushScore = 0
+  if (isFlush) {
+    if (!isCrib) {
+      flushScore = 4
+      if (cutCard && cutCard.suit === checkFlushSuit) {
+        flushScore += 1
+      }
+    } else if (cutCard && cutCard.suit === checkFlushSuit) {
+      flushScore = 5
+    }
+  }
+  if (sink && flushScore > 0) {
+    const flushCards = flushScore === 5 && cutCard
+      ? [...hand, cutCard]
+      : [...hand]
+    const suitName = SUIT_NAMES[checkFlushSuit]
+    const countWord = flushScore === 5 ? "five" : "four"
+    emitGroup(sink, "flush", flushCards, flushScore, `Flush — ${countWord} ${suitName}`)
+  }
+
+  let runScore = 0
+  let j = 0 /// this will point to the end of the run
+  for (let i = 0; i < eH.length - 2; i = j + 1) {
+    let maxSame = 1
+    let runSame = 1
+    for (j = i + 1; j < eH.length && (eH[j].rank - eH[j - 1].rank <= 1); j++) {
+      if (eH[j].rank === eH[j - 1].rank) {
+        /// so to handle multiples of the same rank we note that identifying
+        /// the maximum number of identicall ranked cards will allow us to
+        /// determine the score based on sequence length
+        runSame++
+        if (runSame > maxSame) {
+          maxSame = runSame
+        }
+      } else {
+        runSame = 1
+      }
+    }
+    j = j - 1 // point back to top end of any run
+    const seqLen = eH[j].rank - eH[i].rank + 1
+    const nCards = j - i + 1
+    if (seqLen >= 3) { /// yes there is a run here!
+      // Run equivalence: the legacy branch scores a chain of nCards cards spanning
+      // seqLen distinct ranks as: seqLen if nCards === seqLen; 2·seqLen if
+      // nCards === seqLen + 1; 12 if nCards === seqLen + 2 && maxSame === 2;
+      // 9 otherwise. For 4- and 5-card sets the Cartesian-product total
+      // seqLen · ∏ m_i equals each case: ∏ m_i = 1 → seqLen; one pair →
+      // 2·seqLen; two pairs (seqLen = 3) → 3·2·2 = 12; one triple
+      // (seqLen = 3) → 3·3 = 9. The legacy outer-loop bound i < eH.length - 2
+      // skips only chains of ≤ 2 cards, which never score.
+      if (nCards === seqLen) {
+        runScore += seqLen
+      }
+      if (nCards === seqLen + 1) {
+        runScore += 2 * seqLen
+      }
+      /// case 5 long sequence run of 3
+      /// either 2 x 2 identical or 1 x 3 identical
+      if (nCards === seqLen + 2) {
+        if (maxSame === 2) {
+          runScore += 12
         } else {
-          runSame = 1
+          runScore += 9
         }
       }
-      j = j-1 // point back to top end of any run
-      const seqLen = eH[j].rank - eH[i].rank + 1
-      const nCards = j - i + 1
-      if( seqLen >= 3 ) { /// yes there is a run here!
-        if( nCards === seqLen ) {
-          runScore += seqLen
-        }
-        if( nCards === seqLen + 1 ) {
-          runScore += 2 * seqLen
-        }
-        /// case 5 long sequence run of 3
-        /// either 2 x 2 identical or 1 x 3 identical
-        if( nCards === seqLen + 2 ) {
-          if( maxSame === 2 ) {
-            runScore += 12
+      if (sink) {
+        const chain = eH.slice(i, j + 1)
+        const byRank: Card[][] = []
+        let current: Card[] = [chain[0]]
+        for (let k = 1; k < chain.length; k++) {
+          if (chain[k].rank === current[0].rank) {
+            current.push(chain[k])
           } else {
-            runScore += 9
+            byRank.push(current)
+            current = [chain[k]]
           }
         }
+        byRank.push(current)
+        const combos = cartesianOnePerRank(byRank)
+        const runWord = seqLen === 3 ? "three" : seqLen === 4 ? "four" : "five"
+        for (const combo of combos) {
+          const glyphs = sortCardsByRankThenSuit(combo).map((c) => rank_map[c.rank]).join("-")
+          emitGroup(sink, "run", combo, seqLen, `Run of ${runWord}: ${glyphs}`)
+        }
       }
     }
-    let compoundScore = 0
-    if( eH.length === 5 ) {
-      nonUnarySubsetsOf5.forEach( s => compoundScore += scoreSubset( eH, s ) )
-    } else {
-      nonUnarySubsetsOf4.forEach( s => compoundScore += scoreSubset( eH, s ) )
+  }
+
+  let compoundScore = 0
+  const subsets = eH.length === 5 ? nonUnarySubsetsOf5 : nonUnarySubsetsOf4
+  for (const s of subsets) {
+    const pts = scoreSubset(eH, s)
+    compoundScore += pts
+    if (sink && pts > 0) {
+      const cards = s.map((n) => eH[n])
+      if (s.length === 2 && eH[s[0]].rank === eH[s[1]].rank) {
+        emitGroup(sink, "pair", cards, 2, `Pair of ${pluralRankName(eH[s[0]].rank)}`)
+      } else {
+        const glyphs = sortCardsByRankThenSuit(cards).map((c) => rank_map[c.rank]).join(" + ")
+        emitGroup(sink, "fifteen", cards, 2, `${glyphs} = 15`)
+      }
     }
-    //console.log( flushScore, runScore, compoundScore, nobScore )
-    return flushScore + runScore + compoundScore + nobScore
+  }
+
+  if (sink && nobScore === 1 && cutCard) {
+    const jack = hand.find((c) => c.rank === 11 && c.suit === cutCard.suit)
+    if (jack) {
+      emitGroup(sink, "nobs", [jack], 1, `Nobs — jack of ${SUIT_NAMES[jack.suit]}`)
+    }
+  }
+
+  return flushScore + runScore + compoundScore + nobScore
+}
+
+function scoreHand(hand: Array<Card>, cutCard: Card | undefined, isCrib: boolean): number {
+  return computeHandScore(hand, cutCard, isCrib)
+}
+
+export function scoreHandDetailed(
+  hand: ReadonlyArray<Card>,
+  cutCard: Card | undefined,
+  isCrib: boolean,
+): HandScoreResult {
+  if (hand.length === 0) {
+    return { total: 0, groups: [], isCrib, starterIncluded: false }
+  }
+  const groups: ScoringGroup[] = []
+  const total = computeHandScore(hand, cutCard, isCrib, groups)
+  groups.sort((a, b) => {
+    if (a.category !== b.category) {
+      return CATEGORY_ORDER[a.category] - CATEGORY_ORDER[b.category]
+    }
+    if (a.category === "run" && a.points !== b.points) {
+      return b.points - a.points
+    }
+    return a.cardIds.join().localeCompare(b.cardIds.join())
+  })
+  return {
+    total,
+    groups,
+    isCrib,
+    starterIncluded: cutCard !== undefined,
+  }
+}
+
+export type PegCategory = "fifteen" | "thirty-one" | "run" | "pair"
+
+export type PegEvent = {
+  category: PegCategory
+  points: number
+  /** cardKeys in play order. */
+  cardIds: ReadonlyArray<string>
+  label: string
+}
+
+export type PegPlayResult = {
+  legal: boolean
+  /** count after the play, even when illegal, so the coach can say "that would make 34". */
+  newCount: number
+  events: ReadonlyArray<PegEvent>
+  total: number
+}
+
+export function explainPegPlay(
+  playingSequence: ReadonlyArray<Card>,
+  card: Card,
+): PegPlayResult {
+  let sum = 0
+  playingSequence.forEach((c) => { sum += c.value })
+  const newCount = sum + card.value
+  if (newCount > 31) {
+    return { legal: false, newCount, events: [], total: 0 }
+  }
+  const allCards = [...playingSequence, card]
+  const allIds = allCards.map(cardKey)
+  const events: PegEvent[] = []
+  if (newCount === 15) {
+    events.push({ category: "fifteen", points: 2, cardIds: allIds, label: "That makes 15" })
+  }
+  if (newCount === 31) {
+    events.push({ category: "thirty-one", points: 2, cardIds: allIds, label: "31 exactly" })
+  }
+  const tmp = new Hand([...allCards])
+  const runScore = tmp.calcTailRunScore()
+  if (runScore >= 3) {
+    const runCards = allCards.slice(allCards.length - runScore)
+    const glyphs = runCards.map((c) => rank_map[c.rank]).join("-")
+    const runWord = runScore === 3 ? "three" : runScore === 4 ? "four" : "five"
+    events.push({
+      category: "run",
+      points: runScore,
+      cardIds: runCards.map(cardKey),
+      label: `Run of ${runWord}: ${glyphs}`,
+    })
+  }
+  const pairScore = tmp.calcTailPairScore()
+  if (pairScore > 0) {
+    const pairCards: Card[] = []
+    for (let i = allCards.length - 1; i >= 0; i--) {
+      if (allCards[i].rank === card.rank) {
+        pairCards.unshift(allCards[i])
+      } else {
+        break
+      }
+    }
+    events.push({
+      category: "pair",
+      points: pairScore,
+      cardIds: pairCards.map(cardKey),
+      label: `Pair of ${pluralRankName(card.rank)}`,
+    })
+  }
+  let total = 0
+  events.forEach((ev) => { total += ev.points })
+  return { legal: true, newCount, events, total }
 }
 
 export function calcExpectedHandScore( hand : Array<Card>, cardsOut : Record<Rank, number>,
@@ -167,6 +411,10 @@ export function rankDiscards(
     const cH : Array<Card> = []
     s.forEach( (n) => eH.push( hand[n]))
     crb.forEach( (n) => cH.push( hand[n] ) )
+    // Was a side effect of scoreHand sorting the caller's array. Comparator is
+    // rank-only; Array.prototype.sort is specified stable, and that stability
+    // keeps Expert identical to v0.2 on equal ranks.
+    eH.sort( (c1, c2) => c1.rank - c2.rank )
     const eScore = calcExpectedHandScore( eH, cardsSeen, suitsSeen )
     const cScore = calcExpectedCribScore( cH, cardsSeen, suitsSeen, isPlayerCrib )
     const tScore = isPlayerCrib ? eScore + cScore : eScore - cScore
@@ -375,7 +623,7 @@ export function emptyBreakdown(): { player: PlayerBreakdown, opponent: PlayerBre
   }
 }
 
-function categoryFor( action : GameAction ) : ScoreCategory | null {
+export function categoryFor( action : GameAction ) : ScoreCategory | null {
   if( action.source === "play" &&
       (action.reason === "15" || action.reason === "31" || action.reason === "run" ||
        action.reason === "pair" || action.reason === "the-last-card") ) {
@@ -765,28 +1013,24 @@ class CribbageGame {
             if( va.length > 0 ) {
               return va
             }
+            const sequenceBefore = this.playingHand.hand.slice()
             this.playingHand.add( action.cards )
-            pegSum = this.playingHand.sum()
-            if( pegSum > 31 ) {
+            const pegResult = explainPegPlay( sequenceBefore, action.cards[0] )
+            pegSum = pegResult.newCount
+            if( !pegResult.legal ) {
               this.playingHand.remove( action.cards )
               return [this.gameError( "over-31", "a card may not be played that takes the playing total over 31"  )]
             }
             this.playingHand.setFaceUp( true )
             this.getHand( action.subaction ).remove( action.cards as Card[] )
-            if( pegSum === 15 ) {
-              rV.push( this.scoreAction( 2, action.subaction, action, "15", "play" ) )
+            const pegReason: Record<PegCategory, string> = {
+              fifteen: "15",
+              "thirty-one": "31",
+              run: "run",
+              pair: "pair",
             }
-            if( pegSum === 31 ) {
-              rV.push( this.scoreAction( 2, action.subaction, action, "31", "play" ))
-            }
-            /// now calculate runs and multiples
-            const runScore = this.playingHand.calcTailRunScore()
-            if( runScore >= 3 ) {
-              rV.push( this.scoreAction( runScore, action.subaction, action, "run", "play" ) )
-            }
-            const pairScore = this.playingHand.calcTailPairScore()
-            if( pairScore > 0 ) {
-              rV.push( this.scoreAction( pairScore, action.subaction, action, "pair", "play" ))
+            for( const ev of pegResult.events ) {
+              rV.push( this.scoreAction( ev.points, action.subaction, action, pegReason[ev.category], "play" ) )
             }
             /// calculate if this is
 
@@ -981,4 +1225,4 @@ const selections = makeSelections()
 
 export type {PlayerEvent, GameEvent, GameStage, ActionSource}
 
-export { scoreHand, getBestHand, CribbageGame, GameAction  }
+export { scoreHand, getBestHand, CribbageGame, GameAction }

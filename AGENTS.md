@@ -57,12 +57,14 @@ User click / timer
 | Store / typed hooks | `src/app/store.ts`, `src/app/hooks.ts` | Use `useAppDispatch` / `useAppSelector` |
 | Table UI | `src/Cribbage.tsx` | Layout, buttons, timer that dispatches `noop` when `nextScheduledAction >= 0`. Stays at `src/` (not `src/screens/`) |
 | Cards / board | `src/components/CardComponents.tsx`, `CribbageBoard.tsx` | Card faces, selection, SVG peg overlay on `public/img/Cribbage_Board.svg` |
-| Screens | `src/screens/` | Splash, Learn, Stats, FriendPlay |
-| Routes / skins | `src/App.tsx` | `/` splash; `/play` table (`rc`); `/learn`, `/stats`, `/friend`; `/brooke`, `/emma1`, `/emma2`, `/vintage` deep-link skins; `/select` picker; `*` → `/` |
+| Screens | `src/screens/` | Splash, Learn, Stats, FriendPlay, Lesson |
+| Tutorial content | `src/features/tutorial/` | Lessons, scenarios, grading, reducer, `GuidedRound`, `FixedDeck`. Never import `thePlayer` here |
+| Tutorial UI | `src/components/tutorial/` | Shell, coach, exercises, round map. Layout tokens follow `tutorial-mockups.html` |
+| Routes / skins | `src/App.tsx` | `/` splash; `/play` table (`rc`); `/learn`, `/learn/:lessonId`, `/stats`, `/friend`; `/brooke`, `/emma1`, `/emma2`, `/vintage` deep-link skins; `/select` picker; `*` → `/` |
 
 Game stages: `starting` → `cutting` (first deal) → `dealing` → `selection` → `playing` → `showing` → `starting`, or `ending` at 121.
 
-`thePlayer` is a **module singleton**. Tests that drive the engine, and a fresh table visit, must call `thePlayer.resetForNewSession()`. Difficulty changes strategy only; `StdDeck.shuffle` stays zero-argument. Crib flush is five-card only and **is implemented** in `scoreHand`. Quits are conceded games and increment lifetime/session stats.
+`thePlayer` is a **module singleton**. Tests that drive the engine, and a fresh table visit, must call `thePlayer.resetForNewSession()`. The tutorial must never import `thePlayer` except the Easy-game handoff in `Lesson.tsx`. `scoreHand` and `scoreHandDetailed` share one kernel — do not fork the rules. Difficulty changes strategy only; `StdDeck.shuffle` stays zero-argument. Crib flush is five-card only and **is implemented** in `scoreHand`. Quits are conceded games and increment lifetime/session stats. Persistence `clearAll` resets prefs/stats and **preserves** the `tutorial` member; Learn's Start over calls `clearTutorialProgress()`.
 
 ## Repository layout
 
@@ -74,9 +76,10 @@ src/
   App.test.tsx           # splash smoke test
   setupTests.ts          # jest-dom for Vitest
   app/                   # engine, store, hooks, persistence, difficulty
-  screens/               # Splash, Learn, Stats, FriendPlay
+  screens/               # Splash, Learn, Lesson, Stats, FriendPlay
   features/game/         # Redux slice only
-  components/            # presentational cards + board + modals
+  features/tutorial/     # curriculum, runner, guided-round engine
+  components/            # presentational cards + board + modals + tutorial/
 public/                  # static assets copied as-is (decks, board SVG, manifests)
 dist/                    # build output (gitignored)
 Dockerfile, nginx.conf   # unprivileged static hosting

@@ -150,6 +150,32 @@ function Cribbage( {deck } : {deck? : Deck}  ) {
           starter={game.starter ? game.starter.toObject() as PCard : null}
           isCrib={false}
           total={game.scores["player-hand"]}
+          title="Your hand"
+          variant="compact"
+        />
+      </div>
+    )}
+    { uiState.showOpponent && (
+      <div className="scoreExplanationShow scoreExplanationShow--opponent">
+        <ScoreExplanation
+          hand={game.savedOpponentHand.hand.map((c) => c.toObject() as PCard)}
+          starter={game.starter ? game.starter.toObject() as PCard : null}
+          isCrib={false}
+          total={game.scores["opponent-hand"]}
+          title="Opponent"
+          variant="compact"
+        />
+      </div>
+    )}
+    { uiState.showCrib && (
+      <div className="scoreExplanationShow scoreExplanationShow--crib">
+        <ScoreExplanation
+          hand={game.crib.hand.map((c) => c.toObject() as PCard)}
+          starter={game.starter ? game.starter.toObject() as PCard : null}
+          isCrib={true}
+          total={game.scores["crib"]}
+          title="Crib"
+          variant="compact"
         />
       </div>
     )}

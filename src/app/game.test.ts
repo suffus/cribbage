@@ -4,6 +4,7 @@ import {
   GameAction,
   countNobs,
   emptyBreakdown,
+  explainPegPlay,
   getBestHand,
   playBestCard1,
   rankDiscards,
@@ -514,5 +515,43 @@ describe("ranking wrappers stay Expert", () => {
     const ranked = rankPlays(gameHand, playerHand)
     expect(ranked.length).toBeGreaterThan(0)
     expect(sameCard(playBestCard1(gameHand, playerHand) as Card, ranked[0].card)).toBe(true)
+  })
+})
+
+describe("S-E9 doAction pegging matches explainPegPlay", () => {
+  it("score actions equal explainPegPlay events for 200 random positions", () => {
+    const reasonFor = { fifteen: "15", "thirty-one": "31", run: "run", pair: "pair" } as const
+    for (let i = 0; i < 200; i++) {
+      const dealt = dealDistinct(8)
+      const seqLen = 1 + (i % 4)
+      const sequence = dealt.slice(0, seqLen)
+      const card = dealt[seqLen]
+      const leftover = dealt.slice(seqLen + 1, seqLen + 3)
+      const game = new CribbageGame(new StdDeck("rc"))
+      game.stage = "playing"
+      game.dealer = "opponent"
+      game.turn = "player"
+      game.playingHand.hand = sequence.map((c) => new Card(c.suit, c.rank))
+      game.playerHand.hand = [new Card(card.suit, card.rank)]
+      game.opponentHand.hand = leftover.map((c) => new Card(c.suit, c.rank))
+      const played = game.playerHand.hand[0]
+      const before = game.playingHand.hand.slice()
+      const explained = explainPegPlay(before, played)
+      const act = new GameAction("play-card", "player")
+      act.cards = [played]
+      const next = game.doAction(act)
+      const scores = next.filter((a) => a.action === "score")
+      if (!explained.legal) {
+        expect(next.some((a) => a.action === "error")).toBe(true)
+        expect(scores).toHaveLength(0)
+        expect(game.playingHand.hand).toHaveLength(before.length)
+      } else {
+        expect(scores).toHaveLength(explained.events.length)
+        explained.events.forEach((ev, idx) => {
+          expect(scores[idx].reason).toBe(reasonFor[ev.category])
+          expect(scores[idx].score).toBe(ev.points)
+        })
+      }
+    }
   })
 })
