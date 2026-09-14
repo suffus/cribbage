@@ -1,132 +1,128 @@
-import { Accordion, Button, Card, Col, Container, Row } from 'react-bootstrap'
+import { useState } from 'react'
+import { Button, Container } from 'react-bootstrap'
 import { useNavigate } from 'react-router-dom'
 import {
-  DIFFICULTY_DESCRIPTIONS,
-  DIFFICULTY_LABELS,
-  DIFFICULTY_ORDER,
-} from '../app/difficulty'
+  clearTutorialProgress,
+  loadTutorialProgress,
+} from '../app/persistence'
+import { BEGINNER_PATH, QUICK_PRACTICE, findLesson } from '../features/tutorial/lessonCatalog'
+import { tutorialEnabled } from '../features/tutorial/tutorialTypes'
+import { RoundMap } from '../components/tutorial/RoundMap'
+import { RulesReference } from './RulesReference'
 
-const LESSONS = [
-  "Your first hand",
-  "Counting practice",
-  "Discard strategy",
-  "Pegging strategy",
-] as const
+const PROMISE =
+  "Learn your first round in about 15 minutes, or the whole path in about half an hour."
 
 export function Learn() {
   const navigate = useNavigate()
+  const [progress, setProgress] = useState(loadTutorialProgress)
+  const enabled = tutorialEnabled()
+  const current = progress.currentLessonId ? findLesson(progress.currentLessonId) : undefined
+  const resumeLabel = current
+    ? `Resume: ${current.title}, step ${progress.currentStepIndex + 1}`
+    : null
+
+  const startOver = () => {
+    if (!window.confirm("Start the beginner path over? This clears tutorial progress only.")) {
+      return
+    }
+    clearTutorialProgress()
+    setProgress(loadTutorialProgress())
+  }
 
   return (
-    <div className="learn-page">
+    <div className="learn-page tutorial-page">
       <Container>
         <header className="screen-header">
           <h1>Learn Cribbage</h1>
           <Button variant="outline-light" onClick={() => navigate("/")}>Back</Button>
         </header>
 
-        <Accordion defaultActiveKey="0" className="learn-accordion">
-          <Accordion.Item eventKey="0">
-            <Accordion.Header>Object of the game</Accordion.Header>
-            <Accordion.Body>
-              Cribbage is a two-player race to 121 points. The first player to peg out — to reach
-              or pass 121 — wins. Points come from the play (pegging), from counting each four-card
-              hand, and from the crib.
-            </Accordion.Body>
-          </Accordion.Item>
-          <Accordion.Item eventKey="1">
-            <Accordion.Header>Deal and cut for dealer</Accordion.Header>
-            <Accordion.Body>
-              Each player cuts a card. The low card deals first. After that the deal alternates.
-              The dealer gives six cards to each player.
-            </Accordion.Body>
-          </Accordion.Item>
-          <Accordion.Item eventKey="2">
-            <Accordion.Header>The crib</Accordion.Header>
-            <Accordion.Body>
-              Each player discards two cards face down. Those four cards form the crib, which
-              belongs to the dealer and is counted after the hands.
-            </Accordion.Body>
-          </Accordion.Item>
-          <Accordion.Item eventKey="3">
-            <Accordion.Header>Starter card</Accordion.Header>
-            <Accordion.Body>
-              After the discard, a starter (cut) card is turned. If it is a jack, the dealer scores
-              two points — his heels, also called his nibs.
-            </Accordion.Body>
-          </Accordion.Item>
-          <Accordion.Item eventKey="4">
-            <Accordion.Header>The play</Accordion.Header>
-            <Accordion.Body>
-              Players alternate laying cards. The running count must not exceed 31. Scoring in the
-              play includes fifteens (2), pairs, runs, reaching 31 (2), and the last card (1). A
-              player who cannot play says go; the other may continue if able.
-            </Accordion.Body>
-          </Accordion.Item>
-          <Accordion.Item eventKey="5">
-            <Accordion.Header>The show</Accordion.Header>
-            <Accordion.Body>
-              Hands are counted in order: non-dealer, then dealer, then the crib. The starter is
-              shared by every count.
-            </Accordion.Body>
-          </Accordion.Item>
-          <Accordion.Item eventKey="6">
-            <Accordion.Header>Scoring reference</Accordion.Header>
-            <Accordion.Body>
-              <table className="learn-score-table">
-                <thead>
-                  <tr><th>Combination</th><th>Points</th></tr>
-                </thead>
-                <tbody>
-                  <tr><td>Each 15</td><td>2</td></tr>
-                  <tr><td>Pair / three of a kind / four of a kind</td><td>2 / 6 / 12</td></tr>
-                  <tr><td>Run</td><td>1 per card</td></tr>
-                  <tr><td>Flush in hand (four cards)</td><td>4</td></tr>
-                  <tr><td>Flush in hand with matching starter</td><td>5</td></tr>
-                  <tr><td>Crib flush (five cards the same suit only)</td><td>5</td></tr>
-                  <tr><td>Nobs (jack of the starter&apos;s suit)</td><td>1</td></tr>
-                  <tr><td>His heels (jack as starter)</td><td>2 to the dealer</td></tr>
-                </tbody>
-              </table>
-            </Accordion.Body>
-          </Accordion.Item>
-          <Accordion.Item eventKey="7">
-            <Accordion.Header>Winning, and what a skunk is</Accordion.Header>
-            <Accordion.Body>
-              First to 121 wins. A skunk is a lopsided finish: the loser has not reached 91. A
-              double skunk is when the loser has not reached 61. CribbageX does not yet flag skunks
-              on the game-over screen; the terms are here so you know the table talk.
-            </Accordion.Body>
-          </Accordion.Item>
-          <Accordion.Item eventKey="8">
-            <Accordion.Header>How the opponent plays</Accordion.Header>
-            <Accordion.Body>
-              <ul className="learn-difficulty-list">
-                {DIFFICULTY_ORDER.map((level) => (
-                  <li key={level}>
-                    <strong>{DIFFICULTY_LABELS[level]}</strong> — {DIFFICULTY_DESCRIPTIONS[level]}
-                  </li>
-                ))}
-              </ul>
-              <p>The same shuffle at every difficulty — only the opponent&apos;s strategy changes.</p>
-            </Accordion.Body>
-          </Accordion.Item>
-        </Accordion>
+        {enabled ? (
+          <section className="card-surface learn-path" aria-labelledby="path-heading">
+            <h2 id="path-heading">New to cribbage?</h2>
+            <p className="promise">{PROMISE}</p>
+            <div className="btn-row learn-path-actions">
+              {resumeLabel ? (
+                <Button
+                  variant="warning"
+                  onClick={() => navigate(`/learn/${progress.currentLessonId}`)}
+                >
+                  {resumeLabel}
+                </Button>
+              ) : (
+                <Button variant="warning" onClick={() => navigate(`/learn/${BEGINNER_PATH[0].id}`)}>
+                  Start beginner path
+                </Button>
+              )}
+              {(progress.completedLessonIds.length > 0 || progress.currentLessonId) ? (
+                <button type="button" className="btn-link" onClick={startOver}>
+                  Start over
+                </button>
+              ) : null}
+            </div>
 
-        <section className="learn-lessons" aria-labelledby="lessons-heading">
-          <h2 id="lessons-heading">Guided lessons</h2>
-          <Row xs={1} md={2} className="g-3">
-            {LESSONS.map((title) => (
-              <Col key={title}>
-                <Card className="learn-lesson-tile">
-                  <Card.Body>
-                    <Card.Title>{title}</Card.Title>
-                    <Button disabled variant="outline-light">{title}</Button>
-                    <p className="coming-soon">Coming soon</p>
-                  </Card.Body>
-                </Card>
-              </Col>
-            ))}
-          </Row>
+            <p className="meta">Every lesson walks one part of this round:</p>
+            <RoundMap />
+
+            <ul className="lesson-list">
+              {BEGINNER_PATH.map((lesson, index) => {
+                const done = progress.completedLessonIds.includes(lesson.id)
+                const isCurrent = progress.currentLessonId === lesson.id && !done
+                const mark = done ? "✓" : isCurrent ? "→" : "○"
+                const status = done
+                  ? "complete"
+                  : isCurrent
+                    ? `step ${progress.currentStepIndex + 1} of ${lesson.steps.length}`
+                    : "not started"
+                const sr = done
+                  ? "completed"
+                  : isCurrent
+                    ? "current lesson, "
+                    : ""
+                const action = done ? "Replay" : isCurrent ? "Resume" : "Start"
+                return (
+                  <li
+                    key={lesson.id}
+                    className={`lesson-row${done ? " done" : ""}${isCurrent ? " current" : ""}`}
+                  >
+                    <span className="mark" aria-hidden="true">{mark}</span>
+                    <span className="ttl">
+                      <b>{index + 1}. {lesson.title}</b>
+                      <span>
+                        {lesson.estimatedMinutes} min · {sr ? <span className="visually-hidden">{sr}</span> : null}
+                        {status}
+                      </span>
+                    </span>
+                    <Button
+                      variant={isCurrent ? "warning" : "outline-light"}
+                      onClick={() => navigate(`/learn/${lesson.id}`)}
+                    >
+                      {action}
+                    </Button>
+                  </li>
+                )
+              })}
+            </ul>
+
+            <h3 className="tutorial-subhead">Quick practice</h3>
+            <div className="btn-row">
+              {QUICK_PRACTICE.map((lesson) => (
+                <Button
+                  key={lesson.id}
+                  variant="outline-light"
+                  onClick={() => navigate(`/learn/${lesson.id}`)}
+                >
+                  {lesson.title}
+                </Button>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        <section id="rules" aria-labelledby="rules-heading">
+          <h2 id="rules-heading" className="visually-hidden">Rules reference</h2>
+          <RulesReference />
         </section>
       </Container>
     </div>

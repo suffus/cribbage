@@ -60,7 +60,7 @@ describe("GameOverModal", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
   })
 
-  it("shows raw totals, rounds, difficulty, and the explanation slot", () => {
+  it("shows raw totals, rounds, and difficulty", () => {
     renderOver()
     expect(screen.getByRole("dialog")).toBeInTheDocument()
     expect(screen.getByText("You win!")).toBeInTheDocument()
@@ -69,7 +69,7 @@ describe("GameOverModal", () => {
     expect(screen.getByText("130")).toBeInTheDocument()
     expect(screen.getByText("60")).toBeInTheDocument()
     expect(screen.getByText("80")).toBeInTheDocument()
-    expect(screen.getByText(/point-by-point breakdown coming soon/i)).toBeInTheDocument()
+    expect(screen.queryByText(/point-by-point breakdown coming soon/i)).not.toBeInTheDocument()
   })
 
   it("treats a non-player winner as an opponent win", () => {

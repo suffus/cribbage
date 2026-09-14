@@ -2,11 +2,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { GameBreakdown } from './game'
 import {
   clearAll,
+  clearTutorialProgress,
   loadPreferences,
   loadSessionStats,
   loadStats,
+  loadTutorialProgress,
   recordCompletedGame,
   savePreferences,
+  saveTutorialProgress,
 } from './persistence'
 
 function fixture(winner: "player" | "opponent"): GameBreakdown {
@@ -21,6 +24,7 @@ function fixture(winner: "player" | "opponent"): GameBreakdown {
 
 afterEach(() => {
   vi.restoreAllMocks()
+  clearTutorialProgress()
   clearAll()
 })
 
@@ -141,6 +145,80 @@ describe("persistence module boundary", () => {
     const source = await import('./persistence.ts?raw')
     expect(source.default).not.toMatch(/gameSlice/)
     expect(source.default).not.toMatch(/gamePlayer/)
+    expect(source.default).not.toMatch(/guidedRound/)
     expect(source.default).toMatch(/cribbagex\.v1/)
   })
 })
+
+describe("tutorial persistence", () => {
+  it("round-trips progress on a legacy blob that had no tutorial member", () => {
+    localStorage.setItem("cribbagex.v1", JSON.stringify({
+      preferences: { difficulty: "easy" },
+      stats: { gamesPlayed: 4, playerWins: 2, opponentWins: 2, lifetime: {} },
+    }))
+    const first = loadTutorialProgress()
+    expect(first.completedLessonIds).toEqual([])
+    expect(loadPreferences().difficulty).toBe("easy")
+    expect(loadStats().gamesPlayed).toBe(4)
+    saveTutorialProgress({ currentLessonId: "count-a-hand", currentStepIndex: 3 })
+    expect(loadTutorialProgress().currentLessonId).toBe("count-a-hand")
+    expect(loadTutorialProgress().currentStepIndex).toBe(3)
+    expect(loadPreferences().difficulty).toBe("easy")
+  })
+
+  it("drops a missing lesson id and clamps an out-of-range step", () => {
+    saveTutorialProgress({ currentLessonId: "count-a-hand", currentStepIndex: 99 })
+    expect(loadTutorialProgress().currentStepIndex).toBeLessThan(20)
+    localStorage.setItem("cribbagex.v1", JSON.stringify({
+      preferences: { difficulty: "easy" },
+      stats: { gamesPlayed: 0, playerWins: 0, opponentWins: 0, lifetime: {} },
+      tutorial: {
+        curriculumVersion: 1,
+        currentLessonId: "gone-lesson",
+        currentStepIndex: -4,
+        completedLessonIds: ["count-a-hand", "gone-lesson", 12],
+        skippedStepIds: new Array(500).fill("x").map((_, i) => `skip-${i}`),
+        conceptMastery: { fifteens: { attempts: Number.POSITIVE_INFINITY }, bogus: { attempts: 3 } },
+      },
+    }))
+    const sanitized = loadTutorialProgress()
+    expect(sanitized.currentLessonId).toBeUndefined()
+    expect(sanitized.currentStepIndex).toBe(0)
+    expect(sanitized.completedLessonIds).toEqual(["count-a-hand"])
+    expect(sanitized.skippedStepIds.length).toBeLessThanOrEqual(200)
+    expect(sanitized.conceptMastery.fifteens?.attempts).toBe(0)
+    expect(sanitized.conceptMastery).not.toHaveProperty("bogus")
+  })
+
+  it("resets only tutorial on a curriculum version mismatch", () => {
+    savePreferences({ difficulty: "expert" })
+    recordCompletedGame(fixture("player"))
+    localStorage.setItem("cribbagex.v1", JSON.stringify({
+      preferences: loadPreferences(),
+      stats: loadStats(),
+      tutorial: {
+        curriculumVersion: 99,
+        currentLessonId: "count-a-hand",
+        completedLessonIds: ["count-a-hand"],
+      },
+    }))
+    expect(loadTutorialProgress().completedLessonIds).toEqual([])
+    expect(loadPreferences().difficulty).toBe("expert")
+    expect(loadStats().gamesPlayed).toBe(1)
+  })
+
+  it("lets clearAll preserve tutorial while clearTutorialProgress wipes only that member", () => {
+    savePreferences({ difficulty: "easy" })
+    recordCompletedGame(fixture("player"))
+    saveTutorialProgress({ currentLessonId: "peg-to-31", currentStepIndex: 2, completedLessonIds: ["shape-of-a-round"] })
+    clearAll()
+    expect(loadPreferences().difficulty).toBe("intermediate")
+    expect(loadStats().gamesPlayed).toBe(0)
+    expect(loadTutorialProgress().currentLessonId).toBe("peg-to-31")
+    expect(loadTutorialProgress().completedLessonIds).toEqual(["shape-of-a-round"])
+    clearTutorialProgress()
+    expect(loadTutorialProgress().currentLessonId).toBeUndefined()
+    expect(loadTutorialProgress().completedLessonIds).toEqual([])
+  })
+})
+

@@ -25,6 +25,42 @@ export const rank_map = {
 }
 export type Rank = keyof typeof rank_map
 
+export const RANK_NAMES: Record<Rank, string> = {
+  1: "ace",
+  2: "two",
+  3: "three",
+  4: "four",
+  5: "five",
+  6: "six",
+  7: "seven",
+  8: "eight",
+  9: "nine",
+  10: "ten",
+  11: "jack",
+  12: "queen",
+  13: "king",
+}
+
+export const SUIT_NAMES: Record<Suit, string> = {
+  hearts: "hearts",
+  diamonds: "diamonds",
+  spades: "spades",
+  clubs: "clubs",
+  joker: "joker",
+}
+
+/** Stable identity for a real playing card: rank glyph + suit letter, e.g. "5H", "10D", "JS".
+ *  Matches the deck art filenames under /img/decks/{code}/. Not unique for the synthetic
+ *  "joker"-suit cards used by the expected-value helpers in game.ts. */
+export function cardKey(card: Card): string {
+  return rank_map[card.rank] + suit_map[card.suit]
+}
+
+/** Accessible name, e.g. "five of hearts". Used for aria labels and coach copy. */
+export function cardName(card: Card): string {
+  return `${RANK_NAMES[card.rank]} of ${SUIT_NAMES[card.suit]}`
+}
+
 export interface Deck {
   getFaceImageUri( card: Card ) : string
   getBackImageUri( ) : string

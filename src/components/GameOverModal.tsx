@@ -10,7 +10,6 @@ import {
   resetGameUi,
   userPlay,
 } from '../features/game/gameSlice'
-import { ScoreExplanation } from './ScoreExplanation'
 
 function BreakdownColumn({ title, data }: { title: string, data: PlayerBreakdown }) {
   return (
@@ -68,7 +67,6 @@ export function GameOverModal() {
           <BreakdownColumn title="You" data={breakdown.player} />
           <BreakdownColumn title="Opponent" data={breakdown.opponent} />
         </div>
-        <ScoreExplanation hand={[]} starter={null} isCrib={false} total={0} />
       </Modal.Body>
       <Modal.Footer>
         <Button variant="primary" onClick={playAgain}>Play Again</Button>
