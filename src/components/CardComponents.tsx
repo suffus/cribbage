@@ -34,6 +34,10 @@ type CHProps = {
   spacing?: number;
   score?: number;
   clickCallback?: ( c: Card, idx: number ) => () => void;
+  /** When set, an "i" control is rendered next to the count so the player
+   *  can open a breakdown. Pegging totals omit this — only the show uses it. */
+  onScoreInfo?: () => void;
+  scoreInfoLabel?: string;
 }
 
 type DSProps = {
@@ -90,7 +94,7 @@ function PlayingCard( { card, deck, cardSize, offsetStep, offset, onClickCallbac
   )
 }
 
-function CardHand( { deck, hand, animate, cardSize, spacing, clickCallback, top, left, score }: CHProps ) {
+function CardHand( { deck, hand, animate, cardSize, spacing, clickCallback, top, left, score, onScoreInfo, scoreInfoLabel }: CHProps ) {
   clickCallback = clickCallback ? clickCallback : ( ) => {return () => undefined}
   cardSize = cardSize || 180
   spacing = spacing || Math.floor(cardSize*2/3)
@@ -104,7 +108,24 @@ function CardHand( { deck, hand, animate, cardSize, spacing, clickCallback, top,
         onClickCallback={ clickCallback && clickCallback( c, idx ) } />
       )
     )}
-    { (score !== undefined && score >= 0) && <span className="peggingHandTotal" style={ {left: left+spacing*(hand.length) + 70} }>{score}</span> }
+    { (score !== undefined && score >= 0) && (
+      <span className="peggingHandTotal" style={ {left: left+spacing*(hand.length) + 70} }>
+        <span className="peggingHandTotal-value">{score}</span>
+        {onScoreInfo ? (
+          <button
+            type="button"
+            className="scoreInfoBtn"
+            aria-label={scoreInfoLabel ?? "Score breakdown"}
+            onClick={(event) => {
+              event.stopPropagation()
+              onScoreInfo()
+            }}
+          >
+            <span aria-hidden="true">i</span>
+          </button>
+        ) : null}
+      </span>
+    )}
     </div>
   )
 }
