@@ -187,7 +187,7 @@ export function ScoreBreakdownModal({
         </p>
       </Modal.Body>
       <Modal.Footer>
-        <Button variant="primary" onClick={onClose}>Close</Button>
+        <Button variant="warning" onClick={onClose}>Close</Button>
       </Modal.Footer>
     </Modal>
   )

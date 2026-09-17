@@ -1,7 +1,11 @@
 .App {
   text-align: center;
-  background-repeat: repeat-xy;
-  background-image: url('https://d3d00swyhr67nd.cloudfront.net/w1200h1200/collection/EDII/RSA/EDII_RSA_2000_078-001.jpg');
+  min-height: 100vh;
+  background-color: #2c1814;
+  background-image: url('/img/game-room.jpg');
+  background-repeat: no-repeat;
+  background-position: center top;
+  background-size: cover;
 }
 
 .App-logo {
@@ -85,9 +89,19 @@
   height: "400px";
 }
 
+.game-title {
+  font-family: Georgia, "Times New Roman", serif;
+  color: #f7e7b0;
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin: 0.75rem 0 0.35rem;
+  text-shadow: 0 2px 8px rgba(13, 59, 36, 0.75);
+}
+
 .play {
   position: relative;
-  color: yellow;
+  color: #f7e7b0;
+  font-family: Georgia, "Times New Roman", serif;
   background-color: transparent;
   z-index: 1;
   height: 800px;
@@ -104,6 +118,7 @@
   border-radius: 8px;
   background: rgba(13, 59, 36, 0.82);
   color: #f7e7b0;
+  font-family: Georgia, "Times New Roman", serif;
   font-size: 1rem;
   line-height: 1.35;
   text-align: center;
@@ -174,17 +189,24 @@
   z-index: 12;
 }
 
+.playerScore,
+.opponentScore,
+.peggingHandTotal {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 700;
+  color: #f7e7b0;
+  text-shadow: 0 2px 8px rgba(13, 59, 36, 0.75);
+}
+
 .playerScore {
   position: absolute;
   background-color: transparent;
-  color: yellow;
   top: 130px;
   left: 20px;
   font-size: 80px;
 }
 .opponentScore {
   position: absolute;
-  color: yellow;
   top: 130px;
   left: 20px;
   font-size: 80px;
@@ -253,6 +275,16 @@
   position: absolute;
   top: 20px;
   left: 50px;
+}
+
+.commitCrib .btn-row {
+  gap: 0.5rem;
+}
+
+.commitCrib .btn {
+  min-height: 44px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 600;
 }
 
 

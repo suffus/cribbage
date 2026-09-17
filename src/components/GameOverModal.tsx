@@ -69,7 +69,7 @@ export function GameOverModal() {
         </div>
       </Modal.Body>
       <Modal.Footer>
-        <Button variant="primary" onClick={playAgain}>Play Again</Button>
+        <Button variant="warning" onClick={playAgain}>Play Again</Button>
         <Button variant="outline-secondary" onClick={backToMenu}>Back to Menu</Button>
       </Modal.Footer>
     </Modal>

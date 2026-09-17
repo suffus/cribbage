@@ -51,7 +51,7 @@ export function DifficultyModal() {
         </div>
       </Modal.Body>
       <Modal.Footer>
-        <Button variant="primary" onClick={confirm}>Start Game</Button>
+        <Button variant="warning" onClick={confirm}>Start Game</Button>
       </Modal.Footer>
     </Modal>
   )
