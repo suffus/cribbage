@@ -9,10 +9,12 @@ import { PlayerHand, CardHand, DeckSelector, PopupImage } from './components/Car
 import { CribbageBoard, Peg } from './components/CribbageBoard'
 import { DifficultyModal } from './components/DifficultyModal'
 import { GameOverModal } from './components/GameOverModal'
-import { ScoreExplanation } from './components/ScoreExplanation'
+import { PlayNotice } from './components/PlayNotice'
+import { ScoreBreakdownModal } from './components/ScoreBreakdownModal'
 import { Button } from 'react-bootstrap'
 import { userPlay, UserGamePlay, PCard } from './features/game/gameSlice'
-import { toast } from 'react-toastify';
+
+type ShowBreakdown = "player" | "opponent" | "crib"
 
 function Cribbage( {deck } : {deck? : Deck}  ) {
   const dispatch = useAppDispatch()
@@ -20,6 +22,7 @@ function Cribbage( {deck } : {deck? : Deck}  ) {
   const [selectedDeck, setSelectedDeck] = useState( deck )
   const [needDeck, setNeedDeck] = useState( deck ? false : true )
   const [showCard, setShowCard] = useState( "" )
+  const [showBreakdown, setShowBreakdown] = useState<ShowBreakdown | null>(null)
   const recordedRef = useRef<GameBreakdown | null>(null)
   const { cardSize, cardSpacing, showSpacing, handLeft } = useCardMetrics()
 
@@ -58,19 +61,6 @@ function Cribbage( {deck } : {deck? : Deck}  ) {
     }, uiState.nextScheduledAction)
     return () => window.clearTimeout(timer)
   }, [dispatch, uiState.nextScheduledAction, uiState.updateId])
-
-  useEffect(() => {
-    if (!uiState.message) {
-      return
-    }
-    toast.info(uiState.message, {
-      position: 'top-left',
-      autoClose: 3000,
-      hideProgressBar: true,
-      closeOnClick: true,
-      pauseOnHover: true,
-    })
-  }, [uiState.message, uiState.updateId])
 
   const play = (action : UserGamePlay) => {
     dispatch( userPlay( action ) )
@@ -125,6 +115,25 @@ function Cribbage( {deck } : {deck? : Deck}  ) {
   let playHandSum = 0
   game.playingHand.hand.forEach( x => { playHandSum += x.value } )
 
+  const starterCard = game.starter ? game.starter.toObject() as PCard : null
+  const breakdownOpen =
+    (showBreakdown === "player" && uiState.showPlayer)
+    || (showBreakdown === "opponent" && uiState.showOpponent)
+    || (showBreakdown === "crib" && uiState.showCrib)
+  const breakdownHand =
+    showBreakdown === "player" ? game.savedPlayerHand.hand
+    : showBreakdown === "opponent" ? game.savedOpponentHand.hand
+    : game.crib.hand
+  const breakdownTitle =
+    showBreakdown === "player" ? "Your hand"
+    : showBreakdown === "opponent" ? "Opponent"
+    : "Crib"
+  const breakdownTotal =
+    showBreakdown === "player" ? game.scores["player-hand"]
+    : showBreakdown === "opponent" ? game.scores["opponent-hand"]
+    : game.scores.crib
+  const breakdownIsCrib = showBreakdown === "crib"
+
   if( needDeck ) {
     const decks = ["vv", "br1", "em1t", "em2", "rc"].map( x => new StdDeck( x ))
     return (
@@ -133,58 +142,34 @@ function Cribbage( {deck } : {deck? : Deck}  ) {
   } else {
   return (
     <div className="play">
+    <PlayNotice message={uiState.message} noticeId={uiState.updateId} />
     { showCard && <PopupImage imageUrl={showCard} onClose={() => {setShowCard( "" )}} /> }
     { !uiState.difficultyChosen && <DifficultyModal /> }
     { uiState.finalBreakdown !== null && <GameOverModal /> }
+    { breakdownOpen && showBreakdown && (
+      <ScoreBreakdownModal
+        title={breakdownTitle}
+        hand={breakdownHand.map((c) => c.toObject() as PCard)}
+        starter={starterCard}
+        isCrib={breakdownIsCrib}
+        total={breakdownTotal}
+        deck={theDeck}
+        onClose={() => setShowBreakdown(null)}
+      />
+    )}
     <div className="board">
     { ["playing", "showing", "ending", "dealing", "selection"].includes( gameState)  && <CribbageBoard playerPeg={playerPeg} opponentPeg={opponentPeg}/> }
     </div>
     <div className="playerHand">
     <div className="playerScore">{ game.scores.player }</div>
     { gameState !== "showing" && <PlayerHand deck={ theDeck } hand={ game.playerHand.hand } cardSize={ cardSize} cardClick={ ccb } top={ 80 } left={handLeft }/> }
-    { uiState.showPlayer && <CardHand deck={ theDeck } hand={ game.savedPlayerHand.hand } top={80} left={ handLeft } spacing={showSpacing} clickCallback={showCardCallback} cardSize={cardSize} score={game.scores['player-hand'] }/> }
-    { uiState.showPlayer && (
-      <div className="scoreExplanationShow">
-        <ScoreExplanation
-          hand={game.savedPlayerHand.hand.map((c) => c.toObject() as PCard)}
-          starter={game.starter ? game.starter.toObject() as PCard : null}
-          isCrib={false}
-          total={game.scores["player-hand"]}
-          title="Your hand"
-          variant="compact"
-        />
-      </div>
-    )}
-    { uiState.showOpponent && (
-      <div className="scoreExplanationShow scoreExplanationShow--opponent">
-        <ScoreExplanation
-          hand={game.savedOpponentHand.hand.map((c) => c.toObject() as PCard)}
-          starter={game.starter ? game.starter.toObject() as PCard : null}
-          isCrib={false}
-          total={game.scores["opponent-hand"]}
-          title="Opponent"
-          variant="compact"
-        />
-      </div>
-    )}
-    { uiState.showCrib && (
-      <div className="scoreExplanationShow scoreExplanationShow--crib">
-        <ScoreExplanation
-          hand={game.crib.hand.map((c) => c.toObject() as PCard)}
-          starter={game.starter ? game.starter.toObject() as PCard : null}
-          isCrib={true}
-          total={game.scores["crib"]}
-          title="Crib"
-          variant="compact"
-        />
-      </div>
-    )}
+    { uiState.showPlayer && <CardHand deck={ theDeck } hand={ game.savedPlayerHand.hand } top={80} left={ handLeft } spacing={showSpacing} clickCallback={showCardCallback} cardSize={cardSize} score={game.scores['player-hand'] } onScoreInfo={() => setShowBreakdown("player")} scoreInfoLabel="How your hand was counted"/> }
     </div>
     <div className="deck">
     { (gameState === "cutting") && <CardHand deck={theDeck} hand={theDeck.getRemainingDeck()} clickCallback={ playerCut } top={50} left={ 100 } spacing={ 450/theDeck.getRemainingDeck().length } cardSize={ cardSize } /> }
     { (gameState === "playing" || gameState === "showing" || gameState === "ending") && game.starter &&  <CardHand deck={ theDeck } hand={[game.starter as Card]} top={50} left={0} spacing={0} cardSize={ cardSize } clickCallback={ showCardCallback }/>}
     { (gameState === "playing" || gameState === "ending") && <CardHand deck={theDeck} hand={game.playingHand.hand} top={50} left={ handLeft } spacing={showSpacing} cardSize={ cardSize } score={ playHandSum } /> }
-    { uiState.showCrib && <CardHand deck={ theDeck } hand={game.crib.hand} top={50} left={handLeft } spacing={showSpacing} cardSize={cardSize} clickCallback={showCardCallback} score={game.scores.crib }/>  }
+    { uiState.showCrib && <CardHand deck={ theDeck } hand={game.crib.hand} top={50} left={handLeft } spacing={showSpacing} cardSize={cardSize} clickCallback={showCardCallback} score={game.scores.crib } onScoreInfo={() => setShowBreakdown("crib")} scoreInfoLabel="How the crib was counted"/>  }
     </div>
     <div className="cribHand">
     { game.dealer === "player" && gameState !== "showing" && <CardHand deck={theDeck} hand={game.crib.hand} top={10} left={0} cardSize={ 40 } spacing={15} /> }
@@ -195,7 +180,7 @@ function Cribbage( {deck } : {deck? : Deck}  ) {
     <div className="opponentHand">
     <div className="opponentScore">{ game.scores.opponent }</div>
     { gameState !== "showing" && <CardHand deck={ theDeck } hand={ game.opponentHand.hand } top={ 80 } left={ handLeft } cardSize={ cardSize } spacing={ cardSpacing }/> }
-    { uiState.showOpponent && <CardHand deck={ theDeck } hand={ game.savedOpponentHand.hand } top={80} left={handLeft} spacing={showSpacing} cardSize={cardSize} clickCallback={showCardCallback} score={game.scores['opponent-hand']}/> }
+    { uiState.showOpponent && <CardHand deck={ theDeck } hand={ game.savedOpponentHand.hand } top={80} left={handLeft} spacing={showSpacing} cardSize={cardSize} clickCallback={showCardCallback} score={game.scores['opponent-hand']} onScoreInfo={() => setShowBreakdown("opponent")} scoreInfoLabel="How the opponent's hand was counted"/> }
     </div>
     <div className='commitCrib'>
     { !gated && ["starting", "showing", "ending"].includes( gameState ) && <div><Button onClick={ start }>Start The Round!</Button> <Button onClick={quit}>Quit!</Button></div> }
