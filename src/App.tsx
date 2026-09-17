@@ -25,7 +25,7 @@ const url_map : Record<string, string> = {
 export function GameLayout({ children }: { children: ReactNode }) {
   return (
     <>
-      <h1>CRIBBAGE</h1>
+      <h1 className="game-title">CRIBBAGE</h1>
       {children}
     </>
   )

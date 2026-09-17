@@ -183,8 +183,8 @@ function Cribbage( {deck } : {deck? : Deck}  ) {
     { uiState.showOpponent && <CardHand deck={ theDeck } hand={ game.savedOpponentHand.hand } top={80} left={handLeft} spacing={showSpacing} cardSize={cardSize} clickCallback={showCardCallback} score={game.scores['opponent-hand']} onScoreInfo={() => setShowBreakdown("opponent")} scoreInfoLabel="How the opponent's hand was counted"/> }
     </div>
     <div className='commitCrib'>
-    { !gated && ["starting", "showing", "ending"].includes( gameState ) && <div><Button onClick={ start }>Start The Round!</Button> <Button onClick={quit}>Quit!</Button></div> }
-    { !gated && gameState === "selection" && <div><Button onClick={ playerDiscard }> Select for Crib</Button>  <Button onClick={ autoSelect } disabled={ game.playerHand.hand.length !== 6 }> Auto Select </Button></div> }
+    { !gated && ["starting", "showing", "ending"].includes( gameState ) && <div className="btn-row"><Button variant="warning" onClick={ start }>Start The Round!</Button> <Button variant="outline-light" onClick={quit}>Quit!</Button></div> }
+    { !gated && gameState === "selection" && <div className="btn-row"><Button variant="warning" onClick={ playerDiscard }> Select for Crib</Button>  <Button variant="outline-light" onClick={ autoSelect } disabled={ game.playerHand.hand.length !== 6 }> Auto Select </Button></div> }
     </div>
     </div>
   )
