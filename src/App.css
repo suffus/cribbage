@@ -86,11 +86,40 @@
 }
 
 .play {
+  position: relative;
   color: yellow;
   background-color: transparent;
   z-index: 1;
   height: 800px;
   width: 900px;
+}
+
+.playNotice {
+  position: absolute;
+  top: 8px;
+  left: 280px;
+  width: 540px;
+  z-index: 5;
+  padding: 0.4rem 0.85rem;
+  border-radius: 8px;
+  background: rgba(13, 59, 36, 0.82);
+  color: #f7e7b0;
+  font-size: 1rem;
+  line-height: 1.35;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.45s ease;
+}
+
+.playNotice.is-visible {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .playNotice {
+    transition: none;
+  }
 }
 
 .playerHand {
@@ -164,6 +193,34 @@
   position: absolute;
   top: 100px;
   font-size: 80px;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.scoreInfoBtn {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  border: 2px solid #f7e7b0;
+  background: #14532d;
+  color: #f7e7b0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  font-style: italic;
+  font-family: Georgia, "Times New Roman", serif;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.scoreInfoBtn:hover,
+.scoreInfoBtn:focus-visible {
+  background: #f7e7b0;
+  color: #14532d;
+  outline: 2px solid #f7e7b0;
+  outline-offset: 2px;
 }
 
 .opponentHand {
@@ -516,24 +573,89 @@
   font-size: 1.15rem;
 }
 
-.scoreExplanationShow {
-  position: absolute;
-  top: 250px;
-  left: 170px;
-  max-width: 280px;
-  font-size: 0.85rem;
-  color: #f7e7b0;
-  z-index: 4;
+.modal-dialog.scoreBreakdown-dialog {
+  min-width: 500px;
+  max-width: min(920px, calc(100vw - 2rem));
+  width: fit-content;
 }
 
-.scoreExplanationShow--crib {
-  top: 250px;
-  left: 470px;
+.modal-dialog.scoreBreakdown-dialog .modal-content {
+  min-height: 200px;
+  min-width: 500px;
 }
 
-.scoreExplanationShow--opponent {
-  top: 640px;
-  left: 170px;
+.scoreBreakdown-body {
+  max-height: min(70vh, 640px);
+  overflow-y: auto;
+  color: #1a2e1c;
+}
+
+.scoreBreakdown-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.scoreBreakdown-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid #e6d9b0;
+}
+
+.scoreBreakdown-combo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.scoreBreakdown-label {
+  font-weight: 600;
+  color: #14532d;
+}
+
+.scoreBreakdown-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.scoreBreakdown-card {
+  width: 56px;
+  height: auto;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.scoreBreakdown-points {
+  font-weight: 700;
+  font-size: 1.2rem;
+  color: #14532d;
+  min-width: 2rem;
+  text-align: right;
+}
+
+.scoreBreakdown-empty {
+  margin: 0 0 0.75rem;
+  color: #5a4a20;
+}
+
+.scoreBreakdown-total {
+  display: flex;
+  justify-content: space-between;
+  margin: 0.85rem 0 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #14532d;
+}
+
+.scoreBreakdown-totalNum {
+  margin-left: 0.35rem;
 }
 
 /* ---------------------------------------------------------------------------
