@@ -10,6 +10,7 @@ import { DiscardExercise } from './DiscardExercise'
 const emptyStep = {
   stepId: "x", selected: [], found: [], attempts: 0, hintLevel: 0 as const,
   revealed: 0, status: "in-progress" as const, feedback: null, earned: 0, subIndex: 0,
+  submitted: false,
 }
 
 describe("DiscardExercise", () => {
@@ -66,8 +67,17 @@ describe("DiscardExercise", () => {
     expect(screen.getByTestId("status")).toHaveTextContent("complete")
     // The authored reason itself is rendered by CoachPanel (fed from
     // state.step.feedback), not by DiscardExercise — this component only
-    // shows the generic "compare with the engine" line plus the retry button.
-    expect(screen.getByText(/engine's favourite keep/i)).toBeInTheDocument()
+    // shows the rank line plus the retry button.
+    expect(screen.getByText(/ranks 1 of 15 for their crib/i)).toBeInTheDocument()
     await user.click(screen.getByRole("button", { name: /try another discard/i }))
+  })
+
+  it("ranks the same throw differently depending on whose crib it is", () => {
+    const dispatch = vi.fn()
+    const step = { ...emptyStep, selected: ["JD", "QH"], attempts: 1, feedback: { tone: "good" as const, text: "x" } }
+    render(<DiscardExercise scenario={DISCARD_SCENARIOS["discard-theirs"]} step={step} dispatch={dispatch} />)
+    expect(screen.getByText(/ranks 1 of 15 for their crib/i)).toBeInTheDocument()
+    render(<DiscardExercise scenario={DISCARD_SCENARIOS["discard-yours"]} step={step} dispatch={dispatch} />)
+    expect(screen.getByText(/ranks 2 of 15 for your crib/i)).toBeInTheDocument()
   })
 })

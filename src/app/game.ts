@@ -384,6 +384,17 @@ export type DiscardOption = {
   keep: Array<Card>
   discard: Array<Card>
   score: number          // existing tScore: eScore ± cScore
+  // The expected score of the four kept cards (eScore). Already includes the
+  // average contribution of an unseen starter, which is why its magnitude is
+  // around 12 for a strong keep rather than around 7.
+  handScore: number
+  // The expected value of the two thrown cards (cScore), evaluated for that
+  // crib's owner — the isPlayerCrib flag changes the internal calculation, so
+  // the same two thrown cards do not produce the same value in both
+  // directions. Always reported as a positive expectation; the sign that
+  // turns it into a gain or a loss for `score` lives in the
+  // isPlayerCrib ? + : - above.
+  cribScore: number
 }
 
 export type PlayOption = {
@@ -418,7 +429,7 @@ export function rankDiscards(
     const eScore = calcExpectedHandScore( eH, cardsSeen, suitsSeen )
     const cScore = calcExpectedCribScore( cH, cardsSeen, suitsSeen, isPlayerCrib )
     const tScore = isPlayerCrib ? eScore + cScore : eScore - cScore
-    options.push( { keep: eH, discard: cH, score: tScore } )
+    options.push( { keep: eH, discard: cH, score: tScore, handScore: eScore, cribScore: cScore } )
     console.log("Expected Score for ", eH.join(), " is ", tScore, eScore, cScore )
   }
   // Array.prototype.sort is specified stable; that stability keeps Expert identical to v0.2 on ties.

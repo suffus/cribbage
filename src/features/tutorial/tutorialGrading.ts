@@ -1,4 +1,4 @@
-import { cardKey, type Card } from '../../app/entities'
+import { cardKey, cardName, type Card } from '../../app/entities'
 import {
   explainPegPlay,
   rankDiscards,
@@ -102,6 +102,54 @@ function whyNotScore(selected: ReadonlyArray<string>, scenario: ScoreScenario): 
   return `Those cards add to ${sum}, which is not 15, and they are not a pair or a run.`
 }
 
+function joinNames(names: ReadonlyArray<string>): string {
+  if (names.length === 1) {
+    return names[0]
+  }
+  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`
+}
+
+/** Selecting 5-6-7 out of a 5-6-7-8 run is a real, common near-miss: the
+ *  learner has correctly spotted a run, but a card elsewhere in the hand or
+ *  starter extends it, so the actual scoring group is bigger than what they
+ *  picked. `scoreHandDetailed` only ever emits the longest run through a set
+ *  of consecutive ranks (never both the run of three and the run of four
+ *  that contains it — that would double-count), so the three-card subset
+ *  can never itself become a required group, no matter how many times it is
+ *  resubmitted. Naming exactly which card(s) complete it (instead of
+ *  `whyNotScore`'s generic "may already be counted" hedge, which is simply
+ *  wrong here) is the difference between a learner who is stuck forever and
+ *  one who fixes their selection on the next try. */
+function partialMatchMessage(
+  scenario: ScoreScenario,
+  selected: ReadonlyArray<string>,
+  required: ReadonlyArray<ScoringGroup>,
+  found: ReadonlyArray<string>,
+): string | null {
+  if (selected.length === 0) {
+    return null
+  }
+  const candidates = required.filter((g) => (
+    !found.includes(g.id)
+    && g.cardIds.length > selected.length
+    && selected.every((id) => g.cardIds.includes(id))
+  ))
+  if (candidates.length === 0) {
+    return null
+  }
+  // If more than one required group is a superset of the current selection,
+  // the closest (fewest extra cards) is the more useful one to name.
+  const best = candidates.reduce((a, b) => (a.cardIds.length <= b.cardIds.length ? a : b))
+  const allCards = [...scenario.hand, ...(scenario.starter ? [scenario.starter] : [])].map(specToCard)
+  const missingNames = best.cardIds
+    .filter((id) => !selected.includes(id))
+    .map((id) => {
+      const card = allCards.find((c) => cardKey(c) === id)
+      return card ? cardName(card) : id
+    })
+  return `Those cards are part of a bigger combination. Add ${joinNames(missingNames)} to complete it.`
+}
+
 /** T4: per-category progress for the coach's `<dl>`, e.g. "Fifteens 1 of 2",
  *  "Pairs not started". Categories with zero required groups in this scenario
  *  are omitted entirely rather than shown as "0 of 0". */
@@ -137,7 +185,21 @@ export function gradeScoreSelection(
   } else {
     const leftover = Object.entries(remainingByCategory).filter(([, n]) => n > 0)
     const hint = leftover[0] ? describeMissingCategory(leftover[0][0] as ScoringCategory) : "Every required combination is already found."
-    message = `${whyNotScore(selected, scenario)} ${hint}`
+    // The exact same cards were already counted — say so plainly instead of
+    // the generic "may already be counted" hedge, since cards are still
+    // selectable after they score once (they can be part of another
+    // combination too) and re-picking the identical set is common, not a
+    // scoring mistake.
+    const repeat = required.find((g) => sameIdSet(g.cardIds, selected) && found.includes(g.id))
+    // A proper subset of some not-yet-found group (5-6-7 out of 5-6-7-8) is
+    // also not a scoring mistake in the usual sense — name what completes it
+    // instead of falling through to whyNotScore's generic pattern check.
+    const partial = repeat ? null : partialMatchMessage(scenario, selected, required, found)
+    message = repeat
+      ? `You already counted that — ${describeGroup(repeat)}. ${hint}`
+      : partial
+        ? `${partial} ${hint}`
+        : `${whyNotScore(selected, scenario)} ${hint}`
   }
   return { matched, credited, required, remainingByCategory, message }
 }
@@ -241,6 +303,9 @@ export type PegSequenceEvent = {
 
 export type PegSequenceState = {
   active: ReadonlyArray<Card>
+  /** Parallel to `active` — who laid each card, same order, same length
+   *  (decision D12, matching `GuidedRoundView`'s `playingSequenceOwners`). */
+  activeOwners: ReadonlyArray<PegSequenceParty>
   count: number
   handRemaining: ReadonlyArray<string>
   oppRemaining: ReadonlyArray<CardSpec>
@@ -250,12 +315,21 @@ export type PegSequenceState = {
   events: ReadonlyArray<PegSequenceEvent>
   done: boolean
   earned: number
+  pegPoints: { learner: number[]; opponent: number[] }
+  /** The trick that most recently ended (count reset to 0), kept visible
+   *  dimmed instead of vanishing, plus why it ended (RM-4 item 2/3). */
+  lastActive: ReadonlyArray<Card>
+  lastActiveOwners: ReadonlyArray<PegSequenceParty>
+  lastTrickReason: string
 }
 
 export function initPegSequence(scenario: PegScenario): PegSequenceState {
   const active = specsToCards(scenario.sequence)
   return {
     active,
+    // The scenario's pre-played `sequence` was laid before the learner's
+    // turn, so it is attributed to the opponent.
+    activeOwners: active.map(() => "opponent" as PegSequenceParty),
     count: active.reduce((s, c) => s + c.value, 0),
     handRemaining: scenario.hand.map((spec) => cardKey(specToCard(spec))),
     oppRemaining: scenario.opponentScript,
@@ -265,6 +339,10 @@ export function initPegSequence(scenario: PegScenario): PegSequenceState {
     events: [],
     done: false,
     earned: 0,
+    pegPoints: { learner: [0, -1, -1], opponent: [0, -1, -1] },
+    lastActive: [],
+    lastActiveOwners: [],
+    lastTrickReason: "",
   }
 }
 
@@ -280,11 +358,26 @@ export function learnerLegalCardIds(scenario: PegScenario, state: PegSequenceSta
 
 let seqLogSeq = 0
 
+function shiftPegPoints(pga: ReadonlyArray<number>, points: number): number[] {
+  const next = [...pga]
+  next[2] = pga[1]
+  next[1] = pga[0]
+  next[0] = pga[0] + points
+  return next
+}
+
 function afterPlay(state: PegSequenceState, by: PegSequenceParty, card: Card, result: PegPlayResult): PegSequenceState {
   seqLogSeq += 1
+  const pegPoints = result.total > 0
+    ? {
+        learner: by === "learner" ? shiftPegPoints(state.pegPoints.learner, result.total) : [...state.pegPoints.learner],
+        opponent: by === "opponent" ? shiftPegPoints(state.pegPoints.opponent, result.total) : [...state.pegPoints.opponent],
+      }
+    : { learner: [...state.pegPoints.learner], opponent: [...state.pegPoints.opponent] }
   return {
     ...state,
     active: [...state.active, card],
+    activeOwners: [...state.activeOwners, by],
     count: result.newCount,
     handRemaining: by === "learner" ? state.handRemaining.filter((id) => id !== cardKey(card)) : state.handRemaining,
     oppRemaining: by === "opponent" ? state.oppRemaining.slice(1) : state.oppRemaining,
@@ -299,6 +392,7 @@ function afterPlay(state: PegSequenceState, by: PegSequenceParty, card: Card, re
       points: result.total,
     }],
     earned: state.earned + result.total,
+    pegPoints,
   }
 }
 
@@ -318,6 +412,11 @@ function afterGo(state: PegSequenceState, by: PegSequenceParty): PegSequenceStat
       turn: by === "learner" ? "opponent" : "learner",
       consecutiveGoes,
       events: [...state.events, goEvent],
+      activeOwners: [...state.activeOwners],
+      pegPoints: { learner: [...state.pegPoints.learner], opponent: [...state.pegPoints.opponent] },
+      lastActive: [...state.lastActive],
+      lastActiveOwners: [...state.lastActiveOwners],
+      lastTrickReason: state.lastTrickReason,
     }
   }
   // Both sides just said go in a row: the count resets, and whoever played
@@ -335,9 +434,16 @@ function afterGo(state: PegSequenceState, by: PegSequenceParty): PegSequenceStat
     points: bonus,
   }
   const done = state.handRemaining.length === 0 && state.oppRemaining.length === 0
+  const pegPoints = bonus > 0 && state.lastPlayedBy
+    ? {
+        learner: state.lastPlayedBy === "learner" ? shiftPegPoints(state.pegPoints.learner, bonus) : [...state.pegPoints.learner],
+        opponent: state.lastPlayedBy === "opponent" ? shiftPegPoints(state.pegPoints.opponent, bonus) : [...state.pegPoints.opponent],
+      }
+    : { learner: [...state.pegPoints.learner], opponent: [...state.pegPoints.opponent] }
   return {
     ...state,
     active: [],
+    activeOwners: [],
     count: 0,
     turn: state.lastPlayedBy === "learner" ? "opponent" : "learner",
     lastPlayedBy: null,
@@ -345,10 +451,22 @@ function afterGo(state: PegSequenceState, by: PegSequenceParty): PegSequenceStat
     events: [...state.events, goEvent, resetEvent],
     done,
     earned: state.earned + bonus,
+    pegPoints,
+    lastActive: [...state.active],
+    lastActiveOwners: [...state.activeOwners],
+    lastTrickReason: resetEvent.message,
   }
 }
 
-function opponentStep(state: PegSequenceState): PegSequenceState {
+/** Plays the opponent's next scripted card, or says go when the script is
+ *  exhausted, or skips an illegal scripted card and says go — exactly the
+ *  behaviour of the former private `opponentStep`, now exported so the UI
+ *  can advance the opponent by exactly one action per `Let them play` press
+ *  (RM-4 item 2) instead of the turn engine resolving a whole chain itself. */
+export function opponentTurn(state: PegSequenceState): PegSequenceState {
+  if (state.done || state.turn !== "opponent") {
+    return state
+  }
   const next = state.oppRemaining[0]
   if (!next) {
     return afterGo(state, "opponent")
@@ -365,20 +483,12 @@ function opponentStep(state: PegSequenceState): PegSequenceState {
   return afterPlay(state, "opponent", card, result)
 }
 
-function resolveOpponentTurns(state: PegSequenceState): PegSequenceState {
-  let s = state
-  let guard = 0
-  while (!s.done && s.turn === "opponent" && guard++ < 50) {
-    s = opponentStep(s)
-  }
-  return s
-}
-
 export type PlayLearnerCardResult = { state: PegSequenceState; ok: boolean; message?: string }
 
-/** The learner plays one of their remaining cards. On success this also
- *  auto-resolves every opponent reply (and any go/reset chain) up to the
- *  point where it is the learner's turn again, or the exchange is done. */
+/** The learner plays one of their remaining cards, then hands the turn over.
+ *  The opponent's reply is a separate, explicit step (`opponentTurn`) so the
+ *  learner paces the exchange (RM-4 item 2) instead of every reply landing
+ *  in the same tick as the learner's play. */
 export function playLearnerCard(
   scenario: PegScenario,
   state: PegSequenceState,
@@ -396,7 +506,7 @@ export function playLearnerCard(
   if (!result.legal) {
     return { state, ok: false, message: describePegOutcome(result) }
   }
-  return { state: resolveOpponentTurns(afterPlay(state, "learner", card, result)), ok: true }
+  return { state: afterPlay(state, "learner", card, result), ok: true }
 }
 
 /** The learner explicitly declares they cannot play (T7's "who leads after
@@ -405,7 +515,7 @@ export function learnerGo(state: PegSequenceState): PegSequenceState {
   if (state.done || state.turn !== "learner") {
     return state
   }
-  return resolveOpponentTurns(afterGo(state, "learner"))
+  return afterGo(state, "learner")
 }
 
 export function hintFor(

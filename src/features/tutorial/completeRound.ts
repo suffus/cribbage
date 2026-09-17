@@ -12,7 +12,7 @@ export function completeRound(scriptId: string): { ok: boolean; reason?: string 
   }
   const round = new GuidedRound(script)
   let guard = 0
-  while (guard++ < 400) {
+  while (guard++ < 800) {
     const view = round.view()
     if (view.complete || view.awaiting === "done") {
       return { ok: true }
@@ -22,6 +22,10 @@ export function completeRound(scriptId: string): { ok: boolean; reason?: string 
     }
     if (view.awaiting === "acknowledge") {
       round.acknowledge()
+      continue
+    }
+    if (view.awaiting === "opponent-play") {
+      round.letOpponentPlay()
       continue
     }
     if (view.awaiting === "discard") {

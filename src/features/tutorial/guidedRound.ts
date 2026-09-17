@@ -13,7 +13,7 @@ export type RoundLogEntry = { id: string; who: "you" | "opponent"; text: string;
 export type GuidedRoundView = {
   phase: RoundPhase
   stage: GameStage
-  awaiting: "acknowledge" | "discard" | "play-card" | "count-hand" | "done" | "error"
+  awaiting: "acknowledge" | "discard" | "play-card" | "opponent-play" | "count-hand" | "done" | "error"
   coach: string
   trainingNotice: string
   cribOwner: "you" | "opponent"
@@ -22,12 +22,26 @@ export type GuidedRoundView = {
   opponentCardCount: number
   opponentHand: ReadonlyArray<PCard>
   playingSequence: ReadonlyArray<PCard>
+  /** Parallel to `playingSequence` — who laid each card, same order, same
+   *  length. Kept as a separate array (decision D12) so `playingSequence`'s
+   *  type and every existing `PCard[]` assertion stay unchanged. */
+  playingSequenceOwners: ReadonlyArray<"you" | "opponent">
   count: number
   starter: PCard | null
   crib: ReadonlyArray<PCard>
   scores: { player: number; opponent: number }
   pegPoints: { player: number[]; opponent: number[] }
   countTask: { hand: ReadonlyArray<PCard>; starter: PCard | null; isCrib: boolean; total: number } | null
+  /** Each hand's own score for the show breakdowns (RM-8) — `-1` before that
+   *  hand/crib has been revealed, computed straight from the cards rather
+   *  than read from the game's cumulative `scores`, which does not equal a
+   *  single hand's total. */
+  showScores: { opponentHand: number; crib: number }
+  /** The most recently finished trick, kept on screen (dimmed) instead of
+   *  vanishing the instant the count resets, plus why it ended. */
+  lastTrick: ReadonlyArray<PCard>
+  lastTrickOwners: ReadonlyArray<"you" | "opponent">
+  lastTrickReason: string
   log: ReadonlyArray<RoundLogEntry>
   complete: boolean
 }
@@ -54,6 +68,13 @@ export class GuidedRound {
   private acknowledged = new Set<RoundPhase>()
   private errorReason = ""
   private resumePending = false
+  private playOwners: Array<"you" | "opponent"> = []
+  private trickCards: PCard[] = []
+  private lastTrick: PCard[] = []
+  private lastTrickOwners: Array<"you" | "opponent"> = []
+  private lastTrickReason = ""
+  private pendingOpponentPlay: GameAction | null = null
+  private opponentTurnReleased = false
 
   constructor(script: RoundScript, deckCode: string = "rc") {
     this.script = script
@@ -76,6 +97,7 @@ export class GuidedRound {
       opponentCardCount: this.game.opponentHand.hand.length,
       opponentHand: revealShow ? this.game.savedOpponentHand.hand.map(toPCard) : [],
       playingSequence: this.game.playingHand.hand.map(toPCard),
+      playingSequenceOwners: [...this.playOwners],
       count: this.game.playingHand.sum(),
       starter: this.game.starter ? toPCard(this.game.starter) : null,
       crib: revealCrib ? this.game.crib.hand.map(toPCard) : [],
@@ -85,6 +107,13 @@ export class GuidedRound {
         opponent: [...this.pegPoints.opponent],
       },
       countTask: this.countTask,
+      showScores: {
+        opponentHand: revealShow ? scoreHand([...this.game.savedOpponentHand.hand], this.game.starter, false) : -1,
+        crib: revealCrib ? scoreHand([...this.game.crib.hand], this.game.starter, true) : -1,
+      },
+      lastTrick: [...this.lastTrick],
+      lastTrickOwners: [...this.lastTrickOwners],
+      lastTrickReason: this.lastTrickReason,
       // Snapshot, not a live reference — callers (and tests) may hold onto a
       // view() result across later mutating calls; this.log keeps growing.
       log: [...this.log],
@@ -113,6 +142,16 @@ export class GuidedRound {
     } else {
       this.pump([])
     }
+  }
+
+  letOpponentPlay(): void {
+    if (this.awaiting !== "opponent-play" || !this.pendingOpponentPlay) {
+      return
+    }
+    const action = this.pendingOpponentPlay
+    this.pendingOpponentPlay = null
+    this.opponentTurnReleased = true
+    this.pump([action])
   }
 
   submitDiscard(cardIds: ReadonlyArray<string>): { ok: boolean; message: string } {
@@ -172,6 +211,13 @@ export class GuidedRound {
     this.acknowledged = new Set()
     this.errorReason = ""
     this.resumePending = false
+    this.playOwners = []
+    this.trickCards = []
+    this.lastTrick = []
+    this.lastTrickOwners = []
+    this.lastTrickReason = ""
+    this.pendingOpponentPlay = null
+    this.opponentTurnReleased = false
     this.pump([new GameAction("start-round")])
   }
 
@@ -236,6 +282,7 @@ export class GuidedRound {
     let guard = 0
     while (this.queue.length > 0 && guard++ < 5000) {
       const action = this.queue.shift() as GameAction
+      const countBefore = this.game.playingHand.sum()
       if (action.action === "start-round" && this.complete) {
         continue
       }
@@ -271,6 +318,10 @@ export class GuidedRound {
         : []
       let peggingLabelIdx = 0
       const produced = this.game.doAction(action)
+      if (action.action === "play-card" && this.game.playingHand.hand.length === this.playOwners.length + 1) {
+        this.playOwners.push(action.subaction === "player" ? "you" : "opponent")
+        this.trickCards.push(toPCard(action.cards[0]))
+      }
       for (const next of produced) {
         if (next.action === "score") {
           this.game.doAction(next)
@@ -289,6 +340,15 @@ export class GuidedRound {
         this.awaiting = "error"
         this.errorReason = "The training deal reached game end unexpectedly."
         return
+      }
+      if (this.game.playingHand.hand.length === 0 && this.trickCards.length > 0) {
+        this.lastTrick = [...this.trickCards]
+        this.lastTrickOwners = [...this.playOwners]
+        this.lastTrickReason = countBefore === 31
+          ? "That made 31 — 2 points. The count resets to 0."
+          : `Nobody could play past ${countBefore}. The last card scores 1. The count resets to 0.`
+        this.trickCards = []
+        this.playOwners = []
       }
       this.maybePauseAfter(action)
       if (this.awaiting === "acknowledge") {
@@ -316,6 +376,13 @@ export class GuidedRound {
     }
     if (action.action === "need-play-card") {
       if (action.subaction === "opponent") {
+        if (!this.opponentTurnReleased) {
+          this.pendingOpponentPlay = action
+          this.awaiting = "opponent-play"
+          this.coach = "Their turn. Press \u201cLet them play\u201d when you are ready."
+          return true
+        }
+        this.opponentTurnReleased = false
         const hand = this.game.opponentHand.hand
         let chosen = this.script.opponentPlays
           .slice(this.opponentPlayIndex)

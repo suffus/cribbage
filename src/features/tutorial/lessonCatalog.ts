@@ -10,7 +10,7 @@ export const BEGINNER_PATH: ReadonlyArray<Lesson> = [
   {
     id: "shape-of-a-round",
     title: "The shape of a round",
-    estimatedMinutes: 2,
+    estimatedMinutes: 8,
     concepts: [
       "round-flow", "count-order", "crib-ownership",
       "fifteens", "pairs", "runs",
@@ -18,12 +18,17 @@ export const BEGINNER_PATH: ReadonlyArray<Lesson> = [
       "peg-fifteen-31", "peg-pair-run",
     ],
     steps: [
-      { kind: "round-map", id: "shape-deal", title: "Deal", highlight: "deal", body: ["Each player is dealt six cards. After the first cut for dealer, the deal alternates."] },
-      { kind: "round-map", id: "shape-discard", title: "Discard", highlight: "discard", body: ["Each player throws two cards face down. Those four cards form the crib, which belongs to the dealer."] },
-      { kind: "round-map", id: "shape-pegging", title: "Pegging", highlight: "pegging", body: ["Players alternate laying cards. The running count must not exceed 31. Fifteens, pairs, runs, 31, and the last card all score in the play."] },
-      { kind: "round-map", id: "shape-show", title: "The show", highlight: "show", body: ["Hands are counted in order: non-dealer, then dealer, then the crib. The starter is shared by every count."] },
-      { kind: "explain", id: "shape-board", title: "The board and the race", highlight: "show", body: ["Cribbage is a two-player race to 121. The first to peg out wins. Points come from the play, from each four-card hand, and from the crib."] },
-      { kind: "recap", id: "shape-recap", concepts: ["round-flow", "count-order"], body: ["A round is deal, discard, starter, pegging, show, crib. The non-dealer counts first. The crib belongs to the dealer."] },
+      { kind: "explain", id: "shape-intro", title: "One round, start to finish", highlight: "deal", body: [
+        "Cribbage is a two-player race to 121 points, played in rounds. Each round has six parts: the deal, the discard, the starter, the play, the show, and the crib.",
+        "Rather than list them, the next screen deals two whole hands in front of you, one card and one decision at a time. Nothing is asked of you — press the button to see the next thing happen.",
+        "Watch for one thing in particular. Between the first hand and the second, the deal passes over, and with it the crib and the order of counting.",
+      ] },
+      { kind: "round-demo", id: "shape-demo", scriptIds: ["demo-hand-1", "demo-hand-2"] },
+      { kind: "recap", id: "shape-recap", concepts: ["round-flow", "count-order"], body: [
+        "A round runs deal, discard, starter, play, show, crib.",
+        "The non-dealer counts first, then the dealer, then the crib. The crib belongs to whoever dealt.",
+        "The deal alternates, so both of those jobs swap every hand.",
+      ] },
     ],
   },
   {

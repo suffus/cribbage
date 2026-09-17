@@ -99,6 +99,22 @@ describe("T1 rankDiscards", () => {
       }
     }
   })
+
+  it("reports hand and crib expectation that reconstruct the ranked score", () => {
+    for (const fixture of T1_FIXTURES) {
+      const hand = fixture.hand.map(([suit, rank]) => C(suit, rank))
+      const ranked = rankDiscards(hand, [], fixture.isPlayerCrib)
+      expect(ranked).toHaveLength(15)
+      for (const opt of ranked) {
+        expect(Number.isFinite(opt.handScore)).toBe(true)
+        expect(Number.isFinite(opt.cribScore)).toBe(true)
+        expect(opt.handScore).toBeGreaterThan(0)
+        expect(opt.cribScore).toBeGreaterThan(0)
+        const reconstructed = fixture.isPlayerCrib ? opt.handScore + opt.cribScore : opt.handScore - opt.cribScore
+        expect(Math.abs(opt.score - reconstructed)).toBeLessThan(1e-9)
+      }
+    }
+  })
 })
 
 describe("T2 rankPlays", () => {

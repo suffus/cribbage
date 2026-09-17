@@ -3,7 +3,7 @@ import { Button, Col, Container, Offcanvas, ProgressBar, Row } from 'react-boots
 import { useNavigate } from 'react-router-dom'
 import { DISCARD_SCENARIOS, PEG_SCENARIOS, SCORE_SCENARIOS } from '../../features/tutorial/lessonCatalog'
 import { categoryProgress, hintFor } from '../../features/tutorial/tutorialGrading'
-import type { Lesson, RoundPhase } from '../../features/tutorial/tutorialTypes'
+import type { DiscardScenario, Lesson, PegScenario, RoundPhase, ScoreScenario, TutorialStep } from '../../features/tutorial/tutorialTypes'
 import type { RunnerAction, RunnerState } from '../../features/tutorial/tutorialReducer'
 import { RulesReference } from '../../screens/RulesReference'
 import { CoachPanel } from './CoachPanel'
@@ -20,6 +20,7 @@ export type TutorialShellProps = {
   workspaceExtra?: ReactNode
   coachOverride?: string
   mapPhase?: RoundPhase
+  mapCaption?: string
 }
 
 function highlightFor(lesson: Lesson, state: RunnerState): RoundPhase | undefined {
@@ -42,10 +43,56 @@ function highlightFor(lesson: Lesson, state: RunnerState): RoundPhase | undefine
   if (step.kind === "guided-round") {
     return "deal"
   }
+  if (step.kind === "round-demo") {
+    return "deal"
+  }
   return undefined
 }
 
-export function TutorialShell({ lesson, state, dispatch, onExit, workspaceExtra, coachOverride, mapPhase }: TutorialShellProps) {
+function workspaceHeading(
+  step: TutorialStep,
+  scenario: ScoreScenario | DiscardScenario | PegScenario | undefined,
+): string {
+  if (step.kind === "explain" || step.kind === "round-map") {
+    return step.title
+  }
+  if (step.kind === "recap") {
+    return "Recap"
+  }
+  if (step.kind === "score-example") {
+    return "Watch this count"
+  }
+  if (step.kind === "score-practice") {
+    return "Count this hand"
+  }
+  if (step.kind === "discard-practice") {
+    return "Throw two cards to the crib"
+  }
+  if (step.kind === "peg-practice") {
+    return "The play"
+  }
+  if (step.kind === "guided-round") {
+    return "A coached round"
+  }
+  if (step.kind === "round-demo") {
+    return "A demonstration round"
+  }
+  if (step.kind === "checkpoint") {
+    if (scenario && "hand" in scenario && "isCrib" in scenario) {
+      return "Count this hand"
+    }
+    if (scenario && "isPlayerCrib" in scenario) {
+      return "Throw two cards to the crib"
+    }
+    if (scenario && "task" in scenario) {
+      return "The play"
+    }
+    return "Checkpoint"
+  }
+  return "Checkpoint"
+}
+
+export function TutorialShell({ lesson, state, dispatch, onExit, workspaceExtra, coachOverride, mapPhase, mapCaption }: TutorialShellProps) {
   const navigate = useNavigate()
   const [rulesOpen, setRulesOpen] = useState(false)
   const step = lesson.steps[state.stepIndex]
@@ -96,7 +143,7 @@ export function TutorialShell({ lesson, state, dispatch, onExit, workspaceExtra,
     || step.kind === "round-map"
     || step.kind === "recap"
 
-  const percent = Math.round((state.stepIndex / Math.max(1, lesson.steps.length)) * 100)
+  const percent = Math.round(((state.stepIndex + 1) / Math.max(1, lesson.steps.length)) * 100)
 
   return (
     <div className="tutorial-page shell">
@@ -110,18 +157,18 @@ export function TutorialShell({ lesson, state, dispatch, onExit, workspaceExtra,
           </div>
           <div className="tutorial-header-actions btn-row">
             <Button variant="outline-light" onClick={() => setRulesOpen(true)}>Rules</Button>
-            <Button variant="outline-light" onClick={onExit}>Exit</Button>
+            <Button variant="secondary" onClick={onExit}>Exit</Button>
           </div>
         </header>
 
         <div className="shell-map">
-          <RoundMap current={mapPhase ?? highlightFor(lesson, state)} />
+          <RoundMap current={mapPhase ?? highlightFor(lesson, state)} caption={mapCaption} />
         </div>
 
         <Row>
           <Col xs={12} md={8} className="order-2 order-md-1">
             <section className="tutorial-workspace" aria-labelledby="workspace-heading">
-              <h2 id="workspace-heading">Your hand</h2>
+              <h2 id="workspace-heading">{workspaceHeading(step, scenario)}</h2>
               {step.kind === "explain" || step.kind === "round-map" || step.kind === "recap" ? (
                 <div>
                   <h3>{step.kind === "recap" ? "Recap" : step.title}</h3>
@@ -171,16 +218,21 @@ export function TutorialShell({ lesson, state, dispatch, onExit, workspaceExtra,
         </Row>
 
         <footer className="tutorial-footer shell-foot">
-          <Button variant="outline-light" onClick={() => dispatch({ type: "back" })} disabled={state.stepIndex === 0}>
-            Back
-          </Button>
+          {state.stepIndex === 0 ? (
+            <Button variant="outline-light" onClick={onExit}>Back to Learn</Button>
+          ) : (
+            <Button variant="outline-light" onClick={() => dispatch({ type: "back" })}>
+              Back
+            </Button>
+          )}
           <div className="tutorial-progress">
-            <ProgressBar now={percent} label={`${state.stepIndex} of ${lesson.steps.length} steps · ${percent}%`} />
+            <ProgressBar now={percent} label={`Step ${state.stepIndex + 1} of ${lesson.steps.length} · ${percent}%`} />
           </div>
           <div className="tutorial-footer-actions btn-row">
-            <button type="button" className="btn-link" onClick={() => dispatch({ type: "skip" })}>
+            <span className="skip-note">Skipping does not count as completed.</span>
+            <Button variant="outline-secondary" onClick={() => dispatch({ type: "skip" })}>
               Skip this step
-            </button>
+            </Button>
             <Button
               variant="warning"
               disabled={!nextEnabled}

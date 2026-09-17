@@ -2,17 +2,37 @@ import { useEffect, useRef, useState } from 'react'
 import { StdDeck, cardKey } from '../../app/entities'
 import { explainPegPlay } from '../../app/game'
 import { SelectableHand } from './SelectableHand'
+import { TrickRow } from './TrickRow'
+import { TutorialBoard } from './TutorialBoard'
 import { specToCard, specsToCards } from '../../features/tutorial/tutorialCards'
 import {
   gradePegChoice,
   initPegSequence,
   learnerGo,
   learnerLegalCardIds,
+  opponentTurn,
   playLearnerCard,
+  type PegSequenceEvent,
+  type PegSequenceParty,
   type PegSequenceState,
 } from '../../features/tutorial/tutorialGrading'
 import type { PegScenario } from '../../features/tutorial/tutorialTypes'
 import type { RunnerAction, StepState } from '../../features/tutorial/tutorialReducer'
+
+function ownerOf(party: PegSequenceParty): "you" | "opponent" {
+  return party === "learner" ? "you" : "opponent"
+}
+
+function calloutText(event: PegSequenceEvent): string {
+  return `${event.message} — ${event.points} ${event.points === 1 ? "point" : "points"} to ${event.by === "learner" ? "you" : "them"}.`
+}
+
+/** The newly appended scoring event between two states, or `null` when
+ *  nothing scored — scans only the tail appended since `prev`. */
+function newScoringEvent(prev: PegSequenceState, next: PegSequenceState): PegSequenceEvent | null {
+  const appended = next.events.slice(prev.events.length)
+  return appended.find((e) => e.points > 0) ?? null
+}
 
 export type PeggingExerciseProps = {
   scenario: PegScenario
@@ -41,28 +61,39 @@ function PlaySequenceExercise({ scenario, dispatch }: { scenario: PegScenario; d
   const legalIds = learnerLegalCardIds(scenario, state)
   const canPlay = state.turn === "learner" && !state.done && legalIds.length > 0
   const mustGo = state.turn === "learner" && !state.done && legalIds.length === 0
+  const callout = [...state.events].reverse().find((e) => e.points > 0) ?? null
+
+  const announce = (prev: PegSequenceState, next: PegSequenceState) => {
+    const event = newScoringEvent(prev, next)
+    if (event) {
+      dispatch({ type: "peg-note", tone: "good", text: calloutText(event) })
+    }
+  }
 
   return (
     <div>
-      <div className="peg-strip">
-        <span className="count-chip">Count: {state.count}</span>
-        <div className="seq">
-          {state.active.map((card) => (
-            <span key={cardKey(card)}>
-              <SelectableHand
-                deck={deck}
-                label=""
-                mode="none"
-                cards={[{
-                  card: { suit: card.suit, rank: card.rank },
-                  cardId: cardKey(card),
-                  state: "idle",
-                }]}
-              />
-            </span>
-          ))}
-        </div>
-      </div>
+      <TrickRow
+        cards={state.active.map((card, index) => ({
+          card: { suit: card.suit, rank: card.rank },
+          by: ownerOf(state.activeOwners[index]),
+        }))}
+        count={state.count}
+        label="On the table"
+        previous={state.lastActive.length > 0 ? {
+          cards: state.lastActive.map((card, index) => ({
+            card: { suit: card.suit, rank: card.rank },
+            by: ownerOf(state.lastActiveOwners[index]),
+          })),
+          reason: state.lastTrickReason,
+        } : undefined}
+      />
+      <TutorialBoard
+        playerPegPoints={state.pegPoints.learner}
+        opponentPegPoints={state.pegPoints.opponent}
+        playerScore={state.pegPoints.learner[0]}
+        opponentScore={state.pegPoints.opponent[0]}
+      />
+      {callout ? <p className="peg-callout">{calloutText(callout)}</p> : null}
 
       {state.done ? (
         <p className="coach-math">The exchange is finished. Total from this sequence: {state.earned}.</p>
@@ -95,14 +126,31 @@ function PlaySequenceExercise({ scenario, dispatch }: { scenario: PegScenario; d
 
       {!state.done ? (
         <div className="btn-row">
-          {mustGo ? (
+          {state.turn === "opponent" && !state.done ? (
+            <button
+              type="button"
+              className="btn btn-warning"
+              aria-label="Let the opponent play their card"
+              onClick={() => {
+                const next = opponentTurn(state)
+                setSelectedId(null)
+                setError(null)
+                setState(next)
+                announce(state, next)
+              }}
+            >
+              Let them play
+            </button>
+          ) : mustGo ? (
             <button
               type="button"
               className="btn btn-warning"
               onClick={() => {
                 setError(null)
                 setSelectedId(null)
-                setState((s) => learnerGo(s))
+                const next = learnerGo(state)
+                setState(next)
+                announce(state, next)
               }}
             >
               Say go
@@ -124,6 +172,7 @@ function PlaySequenceExercise({ scenario, dispatch }: { scenario: PegScenario; d
                 setError(null)
                 setSelectedId(null)
                 setState(result.state)
+                announce(state, result.state)
               }}
             >
               Play this card
@@ -132,7 +181,7 @@ function PlaySequenceExercise({ scenario, dispatch }: { scenario: PegScenario; d
         </div>
       ) : null}
 
-      {error ? <p className="status retry" role="status">{error}</p> : null}
+      {error ? <p className="status retry">{error}</p> : null}
 
       <ul className="roundlog">
         {state.events.map((event) => (
@@ -166,25 +215,11 @@ export function PeggingExercise({ scenario, step, dispatch }: PeggingExercisePro
 
   return (
     <div>
-      <div className="peg-strip">
-        <span className="count-chip">Count: {count}</span>
-        <div className="seq">
-          {sequence.map((card) => (
-            <span key={cardKey(card)}>
-              <SelectableHand
-                deck={deck}
-                label=""
-                mode="none"
-                cards={[{
-                  card: { suit: card.suit, rank: card.rank },
-                  cardId: cardKey(card),
-                  state: "idle",
-                }]}
-              />
-            </span>
-          ))}
-        </div>
-      </div>
+      <TrickRow
+        cards={sequence.map((card) => ({ card: { suit: card.suit, rank: card.rank }, by: "opponent" }))}
+        count={count}
+        label="On the table"
+      />
       <SelectableHand
         deck={deck}
         label={

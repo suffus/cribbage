@@ -2,7 +2,7 @@ import { cardKey } from '../../app/entities'
 import { DISCARD_SCENARIOS, PEG_SCENARIOS, SCORE_SCENARIOS } from './scenarios'
 import { specToCard } from './tutorialCards'
 import { gradeDiscard, gradePegChoice, gradeScoreSelection, hintFor } from './tutorialGrading'
-import type { ConceptId, Lesson, TutorialStep } from './tutorialTypes'
+import type { ConceptId, Lesson, ScoreScenario, TutorialStep } from './tutorialTypes'
 
 /** Throws instead of silently no-op'ing so a new `TutorialStep.kind` that
  *  forgets a `submit` branch fails loudly in dev/tests rather than quietly
@@ -31,6 +31,13 @@ export type StepState = {
   feedback: Feedback | null
   earned: number
   subIndex: number
+  /** True once the current `selected` set has been graded (via `submit` /
+   *  `submit-count`) and is being held on screen for review rather than
+   *  cleared automatically. `HandScoringExercise` shows "Clear selection"
+   *  instead of "Count selected cards" while this is true, so the learner
+   *  sees exactly the combination they just counted (right or wrong) until
+   *  they explicitly clear it and pick the next one. */
+  submitted: boolean
 }
 
 export type RunnerState = {
@@ -45,6 +52,9 @@ export type RunnerState = {
    *  the "skipped" status is otherwise never observable except on the final
    *  step of a lesson. `null` once nothing new has been skipped. */
   lastSkippedStepId: string | null
+  /** State for every step the learner has left, so `Back` and `Next` restore
+   *  work instead of discarding it. */
+  stepStates: Readonly<Record<string, StepState>>
 }
 
 export type RunnerAction =
@@ -57,6 +67,9 @@ export type RunnerAction =
   | { type: "back" }
   | { type: "skip" }
   | { type: "restart-step" }
+  | { type: "restart-count" }
+  | { type: "submit-count"; scenario: ScoreScenario }
+  | { type: "reveal-count"; scenario: ScoreScenario }
   | { type: "restart-lesson" }
   | { type: "complete-guided-round" }
   /** T7 play-sequence: PeggingExercise drives its own local turn engine
@@ -64,9 +77,12 @@ export type RunnerAction =
    *  whole scripted exchange is done, the same "external process, one
    *  completion signal" shape as complete-guided-round. */
   | { type: "complete-peg-sequence"; earned: number }
+  /** T7 pegging exercise: announces a scoring play through the coach panel
+   *  (RM-4 item 3) without changing attempts/status/found/earned. */
+  | { type: "peg-note"; tone: "good" | "neutral"; text: string }
 
 function passiveKind(kind: TutorialStep["kind"]): boolean {
-  return kind === "explain" || kind === "round-map" || kind === "recap"
+  return kind === "explain" || kind === "round-map" || kind === "recap" || kind === "round-demo"
 }
 
 export function emptyStepState(step: TutorialStep): StepState {
@@ -81,6 +97,7 @@ export function emptyStepState(step: TutorialStep): StepState {
     feedback: null,
     earned: 0,
     subIndex: 0,
+    submitted: false,
   }
 }
 
@@ -96,6 +113,7 @@ export function initialRunnerState(lesson: Lesson, startAtStep?: number): Runner
     completedStepIds: [],
     lessonComplete: false,
     lastSkippedStepId: null,
+    stepStates: {},
   }
 }
 
@@ -177,20 +195,23 @@ function advance(lesson: Lesson, state: RunnerState, mark: "complete" | "skipped
     ? [...state.completedStepIds, state.step.stepId]
     : state.completedStepIds
   const nextIndex = state.stepIndex + 1
+  const stepStates = { ...state.stepStates, [state.step.stepId]: { ...state.step, status: mark } }
   if (nextIndex >= lesson.steps.length) {
     return {
       ...state,
       step: { ...state.step, status: mark },
       completedStepIds,
       lessonComplete: true,
+      stepStates,
     }
   }
   return {
     ...state,
     stepIndex: nextIndex,
-    step: emptyStepState(lesson.steps[nextIndex]),
+    step: stepStates[lesson.steps[nextIndex].id] ?? emptyStepState(lesson.steps[nextIndex]),
     completedStepIds,
     lessonComplete: false,
+    stepStates,
   }
 }
 
@@ -229,7 +250,7 @@ function submitScore(
       step: {
         ...state.step,
         attempts: state.step.attempts + 1,
-        selected: [],
+        submitted: true,
         feedback: { tone: "retry", text: grade.message },
       },
     }
@@ -241,7 +262,7 @@ function submitScore(
     ...state.step,
     found,
     earned,
-    selected: [],
+    submitted: true,
     feedback: { tone: "good", text: grade.message },
     status: remaining === 0 ? "complete" : "in-progress",
   }
@@ -361,11 +382,14 @@ export function makeTutorialReducer(lesson: Lesson): (s: RunnerState, a: RunnerA
             selected: has
               ? state.step.selected.filter((id) => id !== action.cardId)
               : [...state.step.selected, action.cardId],
+            // Editing the selection again leaves review mode, even if the
+            // previous selection had already been submitted (see StepState.submitted).
+            submitted: false,
           },
         }
       }
       case "clear-selection":
-        return { ...state, step: { ...state.step, selected: [] } }
+        return { ...state, step: { ...state.step, selected: [], submitted: false } }
       case "submit": {
         switch (step.kind) {
           case "score-example":
@@ -391,6 +415,7 @@ export function makeTutorialReducer(lesson: Lesson): (s: RunnerState, a: RunnerA
           case "round-map":
           case "recap":
           case "guided-round":
+          case "round-demo":
             return state
           default:
             // Exhaustiveness guard (gap-report #17): a new step kind must
@@ -445,14 +470,16 @@ export function makeTutorialReducer(lesson: Lesson): (s: RunnerState, a: RunnerA
         return advance(lesson, state, state.step.status === "skipped" ? "skipped" : "complete")
       case "back": {
         if (state.stepIndex === 0) {
-          return { ...state, step: emptyStepState(step) }
+          return state
         }
         const prev = state.stepIndex - 1
+        const stepStates = { ...state.stepStates, [state.step.stepId]: state.step }
         return {
           ...state,
           stepIndex: prev,
-          step: emptyStepState(lesson.steps[prev]),
+          step: stepStates[lesson.steps[prev].id] ?? emptyStepState(lesson.steps[prev]),
           lessonComplete: false,
+          stepStates,
         }
       }
       case "skip": {
@@ -460,8 +487,69 @@ export function makeTutorialReducer(lesson: Lesson): (s: RunnerState, a: RunnerA
         const advanced = advance(lesson, { ...state, step: { ...state.step, status: "skipped" } }, "skipped")
         return { ...advanced, lastSkippedStepId: skippedId }
       }
-      case "restart-step":
-        return { ...state, step: emptyStepState(step), lessonComplete: false }
+      case "restart-step": {
+        const { [state.step.stepId]: _removed, ...stepStates } = state.stepStates
+        return { ...state, step: emptyStepState(step), lessonComplete: false, stepStates }
+      }
+      case "restart-count":
+        return {
+          ...state,
+          step: {
+            ...state.step,
+            selected: [],
+            found: [],
+            earned: 0,
+            revealed: 0,
+            feedback: null,
+            status: "in-progress",
+            submitted: false,
+          },
+        }
+      case "submit-count": {
+        if (step.kind !== "guided-round") {
+          return state
+        }
+        const grade = gradeScoreSelection(action.scenario, state.step.selected, state.step.found)
+        if (!grade.credited) {
+          return {
+            ...state,
+            step: {
+              ...state.step,
+              attempts: state.step.attempts + 1,
+              submitted: true,
+              feedback: { tone: "retry", text: grade.message },
+            },
+          }
+        }
+        return {
+          ...state,
+          step: {
+            ...state.step,
+            found: [...state.step.found, ...grade.matched.map((g) => g.id)],
+            earned: state.step.earned + grade.matched.reduce((s, g) => s + g.points, 0),
+            submitted: true,
+            feedback: { tone: "good", text: grade.message },
+          },
+        }
+      }
+      case "reveal-count": {
+        if (step.kind !== "guided-round") {
+          return state
+        }
+        const grade = gradeScoreSelection(action.scenario, [], [])
+        return {
+          ...state,
+          step: {
+            ...state.step,
+            selected: [],
+            found: grade.required.map((g) => g.id),
+            earned: grade.required.reduce((s, g) => s + g.points, 0),
+            revealed: grade.required.length,
+            hintLevel: 3,
+            feedback: { tone: "neutral", text: "Here is the whole count." },
+          },
+        }
+      }
       case "restart-lesson":
         return initialRunnerState(lesson, 0)
       case "complete-guided-round":
@@ -479,6 +567,11 @@ export function makeTutorialReducer(lesson: Lesson): (s: RunnerState, a: RunnerA
           step,
           { ...state.step, earned: action.earned, status: "complete" },
         )
+      case "peg-note":
+        if (step.kind !== "peg-practice" && step.kind !== "checkpoint") {
+          return state
+        }
+        return { ...state, step: { ...state.step, feedback: { tone: action.tone, text: action.text } } }
     }
   }
 }
