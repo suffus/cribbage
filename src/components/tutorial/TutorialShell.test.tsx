@@ -37,12 +37,9 @@ describe("TutorialShell", () => {
     expect(screen.getByLabelText(/step 1 of 2/i)).toBeInTheDocument()
   })
 
-  it("disables Back on the first step and Next while a graded step is in-progress", async () => {
-    const dispatch = vi.fn()
-    const { rerender } = renderShell(0, dispatch)
-    expect(screen.getByRole("button", { name: "Back" })).toBeDisabled()
-    // Step 1 (explain) is passive, so Next is enabled immediately.
-    expect(screen.getByRole("button", { name: "Next" })).toBeEnabled()
+  it("names the current activity in the workspace heading", () => {
+    const { rerender, dispatch } = renderShell(0)
+    expect(screen.getByRole("heading", { name: "Intro", level: 2 })).toBeInTheDocument()
 
     const state = initialRunnerState(lesson, 1)
     rerender(
@@ -50,9 +47,50 @@ describe("TutorialShell", () => {
         <TutorialShell lesson={lesson} state={state} dispatch={dispatch} onExit={vi.fn()} />
       </MemoryRouter>,
     )
+    expect(screen.getByRole("heading", { name: "Count this hand", level: 2 })).toBeInTheDocument()
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1)
+  })
+
+  it("reports the same step number in the header and the progress bar", () => {
+    renderShell(0)
+    expect(screen.getByLabelText(/step 1 of 2/i)).toBeInTheDocument()
+    expect(screen.getByText(/Step 1 of 2 · 50%/)).toBeInTheDocument()
+  })
+
+  it("offers a way out of step 0 and enables Back afterwards", async () => {
+    const dispatch = vi.fn()
+    const onExit = vi.fn()
+    const user = userEvent.setup()
+    const { rerender } = render(
+      <MemoryRouter>
+        <TutorialShell lesson={lesson} state={initialRunnerState(lesson, 0)} dispatch={dispatch} onExit={onExit} />
+      </MemoryRouter>,
+    )
+    expect(screen.queryByRole("button", { name: "Back" })).not.toBeInTheDocument()
+    const backToLearn = screen.getByRole("button", { name: "Back to Learn" })
+    // Step 1 (explain) is passive, so Next is enabled immediately.
+    expect(screen.getByRole("button", { name: "Next" })).toBeEnabled()
+    await user.click(backToLearn)
+    expect(onExit).toHaveBeenCalled()
+
+    const state = initialRunnerState(lesson, 1)
+    rerender(
+      <MemoryRouter>
+        <TutorialShell lesson={lesson} state={state} dispatch={dispatch} onExit={onExit} />
+      </MemoryRouter>,
+    )
     // Step 2 (score-practice) starts in-progress, so Next is disabled until solved.
     expect(screen.getByRole("button", { name: "Next" })).toBeDisabled()
     expect(screen.getByRole("button", { name: "Back" })).toBeEnabled()
+  })
+
+  it("marks Skip as not counting toward completion", async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    renderShell(0, dispatch)
+    expect(screen.getByText(/Skipping does not count as completed\./)).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: /skip this step/i }))
+    expect(dispatch).toHaveBeenCalledWith({ type: "skip" })
   })
 
   it("dispatches skip and next from the footer", async () => {

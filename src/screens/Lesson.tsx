@@ -12,6 +12,7 @@ import { useAppDispatch } from '../app/hooks'
 import { resetGameUi, setDifficulty } from '../features/game/gameSlice'
 import { BEGINNER_PATH, QUICK_PRACTICE, findLesson, nextLessonId } from '../features/tutorial/lessonCatalog'
 import { GuidedRound } from '../features/tutorial/guidedRound'
+import { RoundDemo } from '../features/tutorial/roundDemo'
 import { ROUND_SCRIPTS } from '../features/tutorial/scenarios'
 import { track } from '../features/tutorial/tutorialAnalytics'
 import {
@@ -24,6 +25,7 @@ import { CURRICULUM_VERSION, tutorialEnabled } from '../features/tutorial/tutori
 import type { ConceptId } from '../features/tutorial/tutorialTypes'
 import { TutorialShell } from '../components/tutorial/TutorialShell'
 import { GuidedRoundView } from '../components/tutorial/GuidedRoundView'
+import { RoundDemoView } from '../components/tutorial/RoundDemo'
 import { RulesReference } from './RulesReference'
 
 function today(): string {
@@ -50,8 +52,19 @@ function masteryState(
   return "practised"
 }
 
+/** Route wrapper only: forces a fresh mount of `LessonBody` (and therefore a
+ *  fresh `useReducer`/refs) whenever the lesson changes. Without the `key`,
+ *  navigating from a completed lesson straight into the next one (the "Next
+ *  lesson" button) kept the previous `RunnerState`, whose `lessonComplete`
+ *  was still `true` from the lesson just finished. The completion effect
+ *  below then fired again for the *new* lesson before the learner had done
+ *  anything, marking it completed/skipped on arrival. */
 export function Lesson() {
   const { lessonId } = useParams()
+  return <LessonBody key={lessonId ?? "none"} lessonId={lessonId} />
+}
+
+function LessonBody({ lessonId }: { lessonId: string | undefined }) {
   const navigate = useNavigate()
   const storeDispatch = useAppDispatch()
   const lesson = lessonId ? findLesson(lessonId) : undefined
@@ -65,10 +78,13 @@ export function Lesson() {
     lesson ? initialRunnerState(lesson, resumeIndex) : initialRunnerState(BEGINNER_PATH[0]),
   )
   const [roundView, setRoundView] = useState(0)
+  const [demoView, setDemoView] = useState(0)
   const [rulesOpen, setRulesOpen] = useState(false)
   const roundRef = useRef<GuidedRound | null>(null)
+  const demoRef = useRef<RoundDemo | null>(null)
   const prevComplete = useRef(false)
   const lastHandledSkipId = useRef<string | null>(null)
+  const recordedStepIds = useRef<Set<string>>(new Set())
 
   const step = lesson?.steps[state.stepIndex]
 
@@ -103,7 +119,12 @@ export function Lesson() {
     // all, so recording an attempt for them would award false credit for
     // every concept the lesson merely mentions (defect: opening lesson 1
     // used to mark all ten of its concepts "ready").
-    if (state.step.status === "complete" && !prevComplete.current && isAssessedStepKind(step.kind)) {
+    if (
+      state.step.status === "complete"
+      && !prevComplete.current
+      && isAssessedStepKind(step.kind)
+      && !recordedStepIds.current.has(state.step.stepId)
+    ) {
       // `attempts` on an assessed step counts *wrong* submissions only (see
       // tutorialReducer.ts submitScore/submitDiscard/submitPeg), so zero
       // wrong tries — not "exactly one submission" — is the flawless signal.
@@ -112,6 +133,7 @@ export function Lesson() {
       // permanently ineligible for independent-correct credit even when
       // solved perfectly.
       const correct = state.step.attempts === 0
+      recordedStepIds.current.add(state.step.stepId)
       for (const concept of stepConcepts(step)) {
         recordConceptAttempt(concept, {
           correct,
@@ -123,7 +145,7 @@ export function Lesson() {
       track("tutorial_step_completed", { lessonId: lesson.id, stepKind: step.kind, curriculumVersion: CURRICULUM_VERSION })
     }
     prevComplete.current = state.step.status === "complete"
-  }, [lesson, step, state.step.status, state.step.attempts, state.step.hintLevel])
+  }, [lesson, step, state.step.status, state.step.attempts, state.step.hintLevel, state.step.stepId])
 
   // Skip persistence (defect: the reducer replaces `state.step` with a fresh
   // StepState for the *next* step as part of the same `skip` action, so
@@ -175,6 +197,17 @@ export function Lesson() {
       }
     } else {
       roundRef.current = null
+    }
+  }, [step])
+
+  useEffect(() => {
+    if (step?.kind === "round-demo") {
+      if (!demoRef.current) {
+        demoRef.current = new RoundDemo(step.scriptIds)
+        setDemoView((n) => n + 1)
+      }
+    } else {
+      demoRef.current = null
     }
   }, [step])
 
@@ -262,14 +295,46 @@ export function Lesson() {
     )
   }
 
+  if (state.lessonComplete) {
+    return (
+      <div className="tutorial-page">
+        <div className="card-surface" style={{ maxWidth: 640, margin: "2rem auto", padding: "1.25rem" }}>
+          <h1>{lesson.title} complete</h1>
+          <p>Practice does not change your progress on the beginner path.</p>
+          <div className="btn-row">
+            <Button variant="warning" onClick={() => dispatch({ type: "restart-lesson" })}>Practise again</Button>
+            {loadTutorialProgress().completedLessonIds.length < BEGINNER_PATH.length ? (
+              <Button
+                variant="outline-light"
+                onClick={() => navigate(`/learn/${loadTutorialProgress().currentLessonId ?? BEGINNER_PATH[0].id}`)}
+              >
+                Continue the beginner path
+              </Button>
+            ) : null}
+            <Button variant="outline-light" onClick={() => navigate("/learn")}>Back to Learn</Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <TutorialShell
       lesson={lesson}
       state={state}
       dispatch={dispatch}
       onExit={() => navigate("/learn")}
-      coachOverride={step?.kind === "guided-round" ? roundRef.current?.view().coach : undefined}
-      mapPhase={step?.kind === "guided-round" ? roundRef.current?.view().phase : undefined}
+      coachOverride={step?.kind === "guided-round"
+        ? roundRef.current?.view().coach
+        : step?.kind === "round-demo"
+          ? demoRef.current?.view().coach
+          : undefined}
+      mapPhase={step?.kind === "guided-round"
+        ? roundRef.current?.view().phase
+        : step?.kind === "round-demo"
+          ? demoRef.current?.view().phase
+          : undefined}
+      mapCaption={step?.kind === "round-demo" && demoRef.current ? `Hand ${demoRef.current.view().handNumber} of 2` : undefined}
       workspaceExtra={
         step?.kind === "guided-round" && roundRef.current ? (
           <GuidedRoundView
@@ -284,6 +349,13 @@ export function Lesson() {
                 dispatch({ type: "complete-guided-round" })
               }
             }}
+          />
+        ) : step?.kind === "round-demo" && demoRef.current ? (
+          <RoundDemoView
+            key={demoView}
+            demo={demoRef.current}
+            view={demoRef.current.view()}
+            onChange={() => setDemoView((n) => n + 1)}
           />
         ) : null
       }

@@ -19,6 +19,14 @@ export function describeMissingCategory(c: ScoringCategory): string {
   }
 }
 
+/** T6's "Show the math" per-option line: `hand <H> <plus|minus> crib <C> = <T>`.
+ *  Decision D11: every number here is produced at run time from `option`,
+ *  never hard-coded. */
+export function describeDiscardMath(option: DiscardOption, isPlayerCrib: boolean): string {
+  const connective = isPlayerCrib ? "plus" : "minus"
+  return `hand ${option.handScore.toFixed(1)} ${connective} crib ${option.cribScore.toFixed(1)} = ${option.score.toFixed(1)}`
+}
+
 export function describeDiscardComparison(
   chosen: DiscardOption,
   best: DiscardOption,
@@ -28,9 +36,13 @@ export function describeDiscardComparison(
   const sameKeep = chosen.keep.length === best.keep.length
     && chosen.keep.every((c, i) => c.suit === best.keep[i]?.suit && c.rank === best.keep[i]?.rank)
   const plain = sameKeep
-    ? `That keep is the one the engine likes best for ${crib}.`
-    : `Another keep scores more on balance for ${crib}. Because this is ${crib}, think about what those two cards will do after they leave your hand.`
-  const math = `Chosen keep expected value ${chosen.score.toFixed(2)}; best keep ${best.score.toFixed(2)}.`
+    ? `That is the throw the engine likes best for ${crib}. It balances three things: the score your four cards keep, what your two cards are worth in ${crib}, and whether your four cards give you a spread of ranks to peg with.`
+    : `Another throw does better on balance for ${crib}. Weigh three things: the score your four cards keep, what your two cards are worth in ${crib}, and whether your four cards give you a spread of ranks to peg with. Press Show the math for the first two as numbers.`
+  const math = [
+    `Two numbers decide this. Your four cards have an expected score, and the two you throw have an expected value in ${crib}. Because it is ${crib}, the crib number is ${isPlayerCrib ? "added" : "subtracted"}.`,
+    `Your throw: ${describeDiscardMath(chosen, isPlayerCrib)}.`,
+    `Engine's best throw: ${describeDiscardMath(best, isPlayerCrib)}.`,
+  ].join(" ")
   return { plain, math }
 }
 

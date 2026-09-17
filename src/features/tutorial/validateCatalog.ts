@@ -15,6 +15,7 @@ import {
   type DiscardScenario,
   type Lesson,
   type PegScenario,
+  type RoundScript,
   type ScoreScenario,
   type TutorialStep,
 } from './tutorialTypes'
@@ -82,6 +83,22 @@ export function checkScoreScenario(id: string, sc: ScoreScenario): ReadonlyArray
       }
     }
   }
+  const selectable = new Set(
+    [...sc.hand, ...(sc.starter ? [sc.starter] : [])].map((spec) => cardKey(specToCard(spec))),
+  )
+  const required = sc.require
+    ? result.groups.filter((g) => sc.require?.includes(g.category))
+    : result.groups
+  if (required.length === 0) {
+    add(problems, where, "no required scoring group is reachable")
+  }
+  for (const g of required) {
+    for (const cardId of g.cardIds) {
+      if (!selectable.has(cardId)) {
+        add(problems, where, `group ${g.id} needs card ${cardId}, which is not selectable (hand plus starter)`)
+      }
+    }
+  }
   return problems
 }
 
@@ -114,6 +131,18 @@ export function checkDiscardScenario(id: string, sc: DiscardScenario): ReadonlyA
     if (!sc.reasons[bestKey]) {
       add(problems, where, `engine best discard ${bestKey} has no reasons entry`)
     }
+  }
+  if (sc.hints.length !== 3) {
+    add(problems, where, "hints must have exactly three tiers")
+  }
+  if (new Set(sc.hints).size !== sc.hints.length) {
+    add(problems, where, "hint tiers must be distinct")
+  }
+  if (!sc.prompt.includes(sc.isPlayerCrib ? "your crib" : "their crib")) {
+    add(problems, where, `prompt must name the crib owner ("${sc.isPlayerCrib ? "your crib" : "their crib"}")`)
+  }
+  if (!/peg/i.test(sc.prompt)) {
+    add(problems, where, "prompt must mention pegging")
   }
   return problems
 }
@@ -234,6 +263,22 @@ export function validateCatalog(): ReadonlyArray<CatalogProblem> {
       if (step.kind === "guided-round" && !ROUND_SCRIPTS[step.scriptId]) {
         add(problems, `step:${step.id}`, `unknown scriptId ${step.scriptId}`)
       }
+      if (step.kind === "round-demo") {
+        for (const id of step.scriptIds) {
+          const script = ROUND_SCRIPTS[id]
+          if (!script) {
+            add(problems, `step:${step.id}`, `unknown scriptId ${id}`)
+          } else if (script.playerDiscard === undefined || script.playerPlays === undefined) {
+            add(problems, `step:${step.id}`, `demo script ${id} needs playerDiscard and playerPlays`)
+          }
+        }
+        const [firstId, secondId] = step.scriptIds
+        const first = ROUND_SCRIPTS[firstId]
+        const second = ROUND_SCRIPTS[secondId]
+        if (first && second && first.dealer === second.dealer) {
+          add(problems, `step:${step.id}`, "the two demo scripts must have opposite dealers")
+        }
+      }
     }
   }
 
@@ -276,6 +321,38 @@ export function validateCatalog(): ReadonlyArray<CatalogProblem> {
   return problems
 }
 
+/** Exported for the same reason as `checkScoreScenario` — a demo script whose
+ *  learner discard is not in the learner's dealt six, or whose learner plays
+ *  are not the kept four, must be provably caught. */
+export function checkPlayerSeat(script: RoundScript): ReadonlyArray<CatalogProblem> {
+  const problems: CatalogProblem[] = []
+  const where = `script:${script.id}`
+  if (script.playerDiscard === undefined && script.playerPlays === undefined) {
+    return problems
+  }
+  if (script.playerDiscard === undefined || script.playerPlays === undefined) {
+    add(problems, where, "playerDiscard and playerPlays must be set together")
+    return problems
+  }
+  const playerIdx = script.dealer === "player" ? [1, 3, 5, 7, 9, 11] : [0, 2, 4, 6, 8, 10]
+  const playerSix = playerIdx.map((i) => script.deck[i])
+  const playerKeys = new Set(playerSix.map((s) => cardKey(specToCard(s))))
+  for (const d of script.playerDiscard) {
+    const key = cardKey(specToCard(d))
+    if (!playerKeys.has(key)) {
+      add(problems, where, `playerDiscard ${key} is not in the learner's six`)
+    }
+  }
+  const discardKeys = new Set(script.playerDiscard.map((s) => cardKey(specToCard(s))))
+  const kept = playerSix.filter((s) => !discardKeys.has(cardKey(specToCard(s))))
+  const playKeys = script.playerPlays.map((s) => cardKey(specToCard(s))).sort().join(",")
+  const keptKeys = kept.map((s) => cardKey(specToCard(s))).sort().join(",")
+  if (playKeys !== keptKeys) {
+    add(problems, where, `playerPlays ${playKeys} !== kept four ${keptKeys}`)
+  }
+  return problems
+}
+
 export function validateRoundScripts(
   completeRound: (scriptId: string) => { ok: boolean; reason?: string },
 ): ReadonlyArray<CatalogProblem> {
@@ -299,6 +376,7 @@ export function validateRoundScripts(
     if (playKeys !== keptKeys) {
       add(problems, `script:${script.id}`, `opponentPlays ${playKeys} !== kept four ${keptKeys}`)
     }
+    problems.push(...checkPlayerSeat(script))
     const result = completeRound(script.id)
     if (!result.ok) {
       add(problems, `script:${script.id}`, result.reason ?? "round did not complete")

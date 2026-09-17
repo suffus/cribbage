@@ -1,13 +1,16 @@
-import { CribbageBoard, Peg } from '../CribbageBoard'
 import { ScoreExplanation } from '../ScoreExplanation'
 import { HandScoringExercise } from './HandScoringExercise'
 import { SelectableHand } from './SelectableHand'
+import { TrickRow } from './TrickRow'
+import type { TrickCard } from './TrickRow'
+import { TutorialBoard } from './TutorialBoard'
 import { StdDeck, cardKey } from '../../app/entities'
+import { scoreHandDetailed } from '../../app/game'
 import type { GuidedRound } from '../../features/tutorial/guidedRound'
 import type { GuidedRoundView as View } from '../../features/tutorial/guidedRound'
 import type { ScoreScenario } from '../../features/tutorial/tutorialTypes'
 import type { RunnerAction, StepState } from '../../features/tutorial/tutorialReducer'
-import { specToCard } from '../../features/tutorial/tutorialCards'
+import { specToCard, specsToCards } from '../../features/tutorial/tutorialCards'
 import { useState } from 'react'
 
 const deck = new StdDeck("rc")
@@ -23,12 +26,27 @@ export type GuidedRoundViewProps = {
 export function GuidedRoundView({ round, view, step, dispatch, onChange }: GuidedRoundViewProps) {
   const [discardIds, setDiscardIds] = useState<string[]>([])
   const [playId, setPlayId] = useState<string | null>(null)
-  const playerPeg = new Peg(0, view.pegPoints.player)
-  const opponentPeg = new Peg(1, view.pegPoints.opponent)
+  const trick: TrickCard[] = view.playingSequence.map((card, index) => ({
+    card,
+    by: view.playingSequenceOwners[index] ?? "opponent",
+  }))
+  const previousTrick = view.lastTrick.length > 0
+    ? {
+        cards: view.lastTrick.map((card, index) => ({
+          card,
+          by: view.lastTrickOwners[index] ?? "opponent",
+        })),
+        reason: view.lastTrickReason,
+      }
+    : undefined
 
   const refresh = () => {
     onChange()
-    if (view.complete) {
+    // Read the round's current state, not the `view` prop: the transition to
+    // `complete` and the last user click that causes it happen inside the
+    // same handler (e.g. the final acknowledge or completeCount call above),
+    // so `view` here is always one render behind and would never see it.
+    if (round.view().complete) {
       dispatch({ type: "complete-guided-round" })
     }
   }
@@ -56,6 +74,16 @@ export function GuidedRoundView({ round, view, step, dispatch, onChange }: Guide
     hints: ["Find every combination.", "Look at fifteens first.", "Select one complete group."],
   } : null
 
+  const countRequired = countScenario
+    ? scoreHandDetailed(
+        specsToCards(countScenario.hand),
+        countScenario.starter ? specToCard(countScenario.starter) : undefined,
+        countScenario.isCrib,
+      ).groups
+    : []
+  const countComplete = countRequired.length > 0
+    && countRequired.every((g) => step.found.includes(g.id))
+
   return (
     <div>
       <div className="training-notice">
@@ -71,18 +99,25 @@ export function GuidedRoundView({ round, view, step, dispatch, onChange }: Guide
         </div>
       ) : null}
 
-      <div className="guided-round-meta">
-        <CribbageBoard playerPeg={playerPeg} opponentPeg={opponentPeg} />
-        <p>You {view.scores.player} · Them {view.scores.opponent}</p>
-      </div>
-
-      {view.starter ? (
+      {view.starter && view.awaiting !== "count-hand" ? (
+        // While counting a hand, `HandScoringExercise` below renders its own
+        // "Starter" fieldset — a *selectable* one, since the starter counts
+        // as a fifth card and can be part of a fifteen, run, or flush. Also
+        // showing this static, non-interactive copy at the same time gave two
+        // boxes both labelled "Starter" on screen — one inert, one the card
+        // the learner actually needs to click (e.g. a run that only becomes
+        // a run once the starter is included). Suppress the static one here
+        // so there is exactly one, and it is the clickable one.
         <SelectableHand
           deck={deck}
           label="Starter"
           mode="none"
           cards={[{ card: view.starter, cardId: cardKey(specToCard([view.starter.suit, view.starter.rank])), state: "idle" }]}
         />
+      ) : null}
+
+      {view.phase === "pegging" ? (
+        <TrickRow cards={trick} count={view.count} label="On the table" previous={previousTrick} />
       ) : null}
 
       {view.awaiting === "discard" ? (
@@ -116,9 +151,6 @@ export function GuidedRoundView({ round, view, step, dispatch, onChange }: Guide
 
       {view.awaiting === "play-card" ? (
         <>
-          <div className="peg-strip">
-            <span className="count-chip">Count: {view.count}</span>
-          </div>
           <SelectableHand
             deck={deck}
             label="Your turn — choose one card"
@@ -154,6 +186,17 @@ export function GuidedRoundView({ round, view, step, dispatch, onChange }: Guide
         </>
       ) : null}
 
+      {view.awaiting === "opponent-play" ? (
+        <button
+          type="button"
+          className="btn btn-warning"
+          aria-label="Let the opponent play their card"
+          onClick={() => { round.letOpponentPlay(); refresh() }}
+        >
+          Let them play
+        </button>
+      ) : null}
+
       {view.awaiting === "count-hand" && countScenario ? (
         <>
           <HandScoringExercise
@@ -161,9 +204,21 @@ export function GuidedRoundView({ round, view, step, dispatch, onChange }: Guide
             step={step}
             mode="practice"
             dispatch={dispatch}
+            submitAs="submit-count"
           />
-          {step.status === "complete" ? (
-            <button type="button" className="btn btn-warning" onClick={() => { round.completeCount(); refresh() }}>
+          <button
+            type="button"
+            className="btn btn-outline-light"
+            onClick={() => dispatch({ type: "reveal-count", scenario: countScenario })}
+          >
+            Show me the count
+          </button>
+          {countComplete ? (
+            <button
+              type="button"
+              className="btn btn-warning"
+              onClick={() => { round.completeCount(); dispatch({ type: "restart-count" }); refresh() }}
+            >
               Continue
             </button>
           ) : null}
@@ -176,13 +231,20 @@ export function GuidedRoundView({ round, view, step, dispatch, onChange }: Guide
         </button>
       ) : null}
 
+      <TutorialBoard
+        playerPegPoints={view.pegPoints.player}
+        opponentPegPoints={view.pegPoints.opponent}
+        playerScore={view.scores.player}
+        opponentScore={view.scores.opponent}
+      />
+
       {view.opponentHand.length > 0 ? (
         <ScoreExplanation
           title="Opponent"
           hand={[...view.opponentHand]}
           starter={view.starter}
           isCrib={false}
-          total={view.scores.opponent}
+          total={view.showScores.opponentHand}
           variant="list"
         />
       ) : null}
@@ -192,7 +254,7 @@ export function GuidedRoundView({ round, view, step, dispatch, onChange }: Guide
           hand={[...view.crib]}
           starter={view.starter}
           isCrib
-          total={view.scores.player}
+          total={view.showScores.crib}
           variant="list"
         />
       ) : null}
@@ -207,8 +269,8 @@ export function GuidedRoundView({ round, view, step, dispatch, onChange }: Guide
         ))}
       </ul>
 
-      <div className="btn-row" style={{ marginTop: "0.8rem" }}>
-        <button type="button" className="btn btn-outline-light" onClick={restart}>
+      <div className="guided-round-secondary">
+        <button type="button" className="btn btn-outline-secondary" onClick={restart}>
           Restart this round
         </button>
       </div>

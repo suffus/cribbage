@@ -738,6 +738,29 @@
   color: #d9c48a;
 }
 
+.roundmap-caption {
+  font-size: 0.8rem;
+  color: #d9c48a;
+  margin: 0.3rem 0 0;
+}
+
+.skip-note {
+  font-size: 0.75rem;
+  color: #d9c48a;
+  margin-right: 0.5rem;
+}
+
+.guided-round-secondary {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(247, 231, 176, 0.25);
+}
+
+.roundmap li .mark {
+  margin-right: 0.2rem;
+  color: #f7e7b0;
+}
+
 .selectable-hand {
   border: 0;
   margin: 0 0 0.75rem;
@@ -828,6 +851,12 @@
   font-weight: 700;
   letter-spacing: 0.02em;
   color: #f4efe2;
+}
+
+.selectable-card-uses {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #c9b36a;
 }
 
 .coach-progress {
@@ -1181,6 +1210,87 @@
   align-items: center;
   gap: 0.5rem;
   margin-bottom: 0.75rem;
+  list-style: none;
+  padding: 0;
+}
+
+.peg-sequence-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.peg-owner {
+  font-size: 0.7rem;
+  color: #d9c48a;
+}
+
+.peg-sequence--previous {
+  opacity: 0.55;
+}
+
+.peg-trick-reason {
+  font-size: 0.78rem;
+  color: #d9c48a;
+  margin: 0 0 0.6rem;
+}
+
+.peg-callout {
+  border: 2px solid #f7e7b0;
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  margin: 0.6rem 0;
+  color: #f7e7b0;
+  font-weight: 700;
+}
+
+.round-demo-show-hand {
+  margin-bottom: 1.25rem;
+}
+
+.round-demo-show-cards {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.round-demo-plus {
+  align-self: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #f7e7b0;
+  margin: 0 0.1rem;
+}
+
+.tutorial-board-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.tutorial-board-frame {
+  width: 135px;
+  height: 360px;
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+
+.tutorial-board {
+  position: relative;
+  width: 300px;
+  height: 800px;
+  transform: scale(0.45);
+  transform-origin: top left;
+}
+
+.tutorial-board-scores {
+  font-weight: 700;
+  color: #f7e7b0;
+  margin: 0;
 }
 
 .peg-count {

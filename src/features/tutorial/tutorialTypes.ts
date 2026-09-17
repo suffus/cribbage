@@ -112,6 +112,13 @@ export type RoundScript = {
   /** The opponent's pegging plays, in intended order. Legality is re-checked at run time; an
    *  illegal scripted card is skipped in favour of the first legal card and reported by C4. */
   opponentPlays: ReadonlyArray<CardSpec>
+  /** The learner's seat's discard, set only on demonstration scripts (`RoundDemo`). The coached
+   *  rounds (`first-round`, `second-round`) leave this undefined because the learner chooses there.
+   *  When one of `playerDiscard` / `playerPlays` is set, the other must be too. */
+  playerDiscard?: readonly [CardSpec, CardSpec]
+  /** The learner's seat's pegging plays, in order, set only on demonstration scripts. See
+   *  `playerDiscard`. */
+  playerPlays?: ReadonlyArray<CardSpec>
   checkpoints: ReadonlyArray<RoundCheckpoint>
 }
 
@@ -125,6 +132,9 @@ export type TutorialStep =
   | { kind: "discard-practice"; id: string; scenarioId: string; hintPolicy: HintPolicy }
   | { kind: "peg-practice";     id: string; scenarioId: string; hintPolicy: HintPolicy }
   | { kind: "guided-round";     id: string; scriptId: string }
+  /** Plays two scripted hands back to back, one visible beat at a time, with the dealer reversed
+   *  between the two ids. Never assessed and never awaits learner input. */
+  | { kind: "round-demo";       id: string; scriptIds: readonly [string, string] }
   | { kind: "checkpoint";       id: string; scenarioIds: ReadonlyArray<string>; hintPolicy: "on-request" }
   | { kind: "recap";            id: string; concepts: ReadonlyArray<ConceptId>; body: ReadonlyArray<string> }
 

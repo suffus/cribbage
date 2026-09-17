@@ -16,9 +16,7 @@ const deck = new StdDeck("rc")
 
 export function DiscardExercise({ scenario, step, dispatch, locked = false }: DiscardExerciseProps) {
   const owner = scenario.isPlayerCrib ? "This is your crib." : "This is the opponent's crib."
-  const grade = step.feedback
-    ? gradeDiscard(scenario, step.selected.length === 2 ? step.selected : Object.keys(scenario.reasons)[0]?.split("-") ?? [])
-    : null
+  const grade = step.selected.length === 2 ? gradeDiscard(scenario, step.selected) : null
   const confirmed = step.status === "complete" || (step.feedback !== null && step.attempts > 0)
 
   return (
@@ -60,7 +58,8 @@ export function DiscardExercise({ scenario, step, dispatch, locked = false }: Di
       </div>
       {grade && confirmed ? (
         <div className="discard-compare">
-          <p>Your throw compared with the engine's favourite keep. The numbers sit behind Show the math.</p>
+          <p>Your throw ranks {grade.rankOfChoice} of 15 for {scenario.isPlayerCrib ? "your crib" : "their crib"}.</p>
+          <p>Press Show the math on the coach panel for your hand number and your crib number.</p>
         </div>
       ) : null}
     </div>

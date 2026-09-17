@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { cardKey } from '../../app/entities'
-import { explainPegPlay, scoreHand } from '../../app/game'
+import { explainPegPlay, scoreHand, scoreHandDetailed } from '../../app/game'
 import { completeRound } from './completeRound'
 import { GuidedRound } from './guidedRound'
 import { ROUND_SCRIPTS } from './scenarios'
@@ -18,8 +18,8 @@ function ids(cards: ReadonlyArray<{ suit: string; rank: number }>): string[] {
 function runToNextChoice(round: GuidedRound): GuidedRoundView {
   let view = round.view()
   let guard = 0
-  while (view.awaiting === "acknowledge" && guard++ < 20) {
-    round.acknowledge()
+  while ((view.awaiting === "acknowledge" || view.awaiting === "opponent-play") && guard++ < 40) {
+    if (view.awaiting === "acknowledge") { round.acknowledge() } else { round.letOpponentPlay() }
     view = round.view()
   }
   return view
@@ -90,6 +90,57 @@ describe.each(Object.keys(ROUND_SCRIPTS))("GuidedRound %s — shared contract", 
     expect(round.submitPlay("not-a-card")).toEqual({ ok: false, message: "That card is not in your hand." })
     expect(round.view().playingSequence).toEqual(before.playingSequence)
   })
+
+  it("attributes every card in the trick to the player who laid it", () => {
+    const round = new GuidedRound(script)
+    const initial = round.view()
+    round.submitDiscard(initial.playerHandIds.slice(0, 2))
+    let view = runToNextChoice(round)
+    expect(view.awaiting).toBe("play-card")
+    expect(view.playingSequenceOwners.length).toBe(view.playingSequence.length)
+    const activeCards = view.playingSequence.map((c) => specToCard([c.suit, c.rank] as [never, never]))
+    const legalCard = view.playerHand.find((c) =>
+      explainPegPlay(activeCards, specToCard([c.suit, c.rank] as [never, never])).legal,
+    )
+    expect(legalCard).toBeTruthy()
+    round.submitPlay(cardKey(specToCard([legalCard!.suit, legalCard!.rank] as [never, never])))
+    view = runToNextChoice(round)
+    expect(view.playingSequenceOwners.length).toBe(view.playingSequence.length)
+    expect(view.playingSequenceOwners.includes("you")).toBe(true)
+  })
+
+  it("waits for letOpponentPlay before the opponent replies", () => {
+    const round = new GuidedRound(script)
+    const initial = round.view()
+    round.submitDiscard(initial.playerHandIds.slice(0, 2))
+    const view = runToNextChoice(round)
+    expect(view.awaiting).toBe("play-card")
+    const before = round.view()
+    const activeCards = view.playingSequence.map((c) => specToCard([c.suit, c.rank] as [never, never]))
+    const legalCard = view.playerHand.find((c) =>
+      explainPegPlay(activeCards, specToCard([c.suit, c.rank] as [never, never])).legal,
+    )
+    expect(legalCard).toBeTruthy()
+    round.submitPlay(cardKey(specToCard([legalCard!.suit, legalCard!.rank] as [never, never])))
+    expect(round.view().awaiting).toBe("opponent-play")
+    expect(round.view().playingSequence.length).toBe(before.playingSequence.length + 1)
+    round.letOpponentPlay()
+    const after = round.view()
+    expect(
+      after.playingSequence.length === before.playingSequence.length + 2 || after.awaiting !== "opponent-play",
+    ).toBe(true)
+  })
+
+  it("letOpponentPlay is a no-op unless the round is waiting for it", () => {
+    const round = new GuidedRound(script)
+    const before = round.view()
+    // A freshly booted round is awaiting "discard" (deal happens before any
+    // opponent play), not "opponent-play" — either way, the point of this
+    // test is that letOpponentPlay does nothing outside that specific state.
+    expect(before.awaiting).not.toBe("opponent-play")
+    round.letOpponentPlay()
+    expect(round.view()).toEqual(before)
+  })
 })
 
 describe("first-round (dealer: opponent) — S-G2, S-G4", () => {
@@ -151,6 +202,42 @@ describe("first-round (dealer: opponent) — S-G2, S-G4", () => {
       specToCard(["diamonds", 8] as [never, never]),
       false,
     )).toBe(3)
+  })
+
+  it("retains the finished trick with a reason instead of clearing it silently", () => {
+    const round = new GuidedRound(script)
+    round.submitDiscard(["5S", "6C"])
+    let view = runToNextChoice(round)
+    let sawRetainedTrick = false
+    for (const cardId of ["7H", "JD", "QH", "2S"]) {
+      round.submitPlay(cardId)
+      view = runToNextChoice(round)
+      if (view.lastTrick.length > 0) {
+        sawRetainedTrick = true
+        expect(view.lastTrickOwners.length).toBe(view.lastTrick.length)
+        expect(view.lastTrickReason).toMatch(/resets to 0/)
+      }
+    }
+    expect(sawRetainedTrick).toBe(true)
+  })
+
+  it("reports each show total as that hand's own score, not the game score", () => {
+    const round = new GuidedRound(script)
+    round.submitDiscard(["5S", "6C"])
+    let view = runToNextChoice(round)
+    for (const cardId of ["7H", "JD", "QH", "2S"]) {
+      round.submitPlay(cardId)
+      view = runToNextChoice(round)
+    }
+    round.completeCount()
+    view = runToNextChoice(round)
+    const starterCard = specToCard([view.starter!.suit, view.starter!.rank] as [never, never])
+    const opponentHandCards = view.opponentHand.map((c) => specToCard([c.suit, c.rank] as [never, never]))
+    const cribCards = view.crib.map((c) => specToCard([c.suit, c.rank] as [never, never]))
+    expect(view.showScores.opponentHand).toBe(scoreHandDetailed(opponentHandCards, starterCard, false).total)
+    expect(view.showScores.crib).toBe(scoreHandDetailed(cribCards, starterCard, true).total)
+    // The point of RM-8: this hand's own score, not the cumulative game score.
+    expect(view.showScores.opponentHand).not.toBe(view.scores.opponent)
   })
 })
 
