@@ -12,3 +12,13 @@ export const SCORE_REASON_COPY: Record<string, string> = {
   "show-dealer": "hand count",
   "show-crib": "crib count",
 }
+
+export function scoreNotice(
+  who: "player" | "opponent",
+  score: number,
+  reason: string,
+): string {
+  const whom = who === "player" ? "You" : "Your opponent"
+  const why = SCORE_REASON_COPY[reason] ?? "points"
+  return `${whom} scored ${score} for ${why}`
+}

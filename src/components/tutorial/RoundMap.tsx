@@ -6,8 +6,12 @@ const PHASES: ReadonlyArray<{ id: RoundPhase; label: string }> = [
   { id: "starter", label: "Starter" },
   { id: "pegging", label: "Pegging" },
   { id: "show", label: "Show" },
-  { id: "crib", label: "Crib" },
 ]
+
+function mapPhase(current: RoundPhase | null): RoundPhase | null {
+  // The crib is counted during the show, not as its own phase.
+  return current === "crib" ? "show" : current
+}
 
 export type RoundMapProps = {
   current?: RoundPhase | null
@@ -15,12 +19,13 @@ export type RoundMapProps = {
 }
 
 export function RoundMap({ current = null, caption }: RoundMapProps) {
-  const currentIndex = current ? PHASES.findIndex((p) => p.id === current) : -1
+  const highlight = mapPhase(current)
+  const currentIndex = highlight ? PHASES.findIndex((p) => p.id === highlight) : -1
   return (
     <>
       <ol className="roundmap">
         {PHASES.map((phase, index) => {
-          const isCurrent = phase.id === current
+          const isCurrent = phase.id === highlight
           const done = currentIndex >= 0 && index < currentIndex
           return (
             <li
@@ -29,7 +34,6 @@ export function RoundMap({ current = null, caption }: RoundMapProps) {
               aria-current={isCurrent ? "step" : undefined}
             >
               {index > 0 ? <span className="sep" aria-hidden="true">→</span> : null}
-              {done ? <span className="mark" aria-hidden="true">✓</span> : null}
               <span className="step">
                 {phase.label}
                 {isCurrent ? <span className="visually-hidden"> — current phase</span> : null}

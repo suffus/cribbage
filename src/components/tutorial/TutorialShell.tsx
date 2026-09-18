@@ -200,7 +200,7 @@ export function TutorialShell({ lesson, state, dispatch, onExit, workspaceExtra,
             </section>
           </Col>
           <Col xs={12} md={4} className="order-1 order-md-2">
-            <section className="tutorial-coach" aria-labelledby="coach-heading">
+            <section className="tutorial-coach tutorial-coach--sticky" aria-labelledby="coach-heading">
               <h2 id="coach-heading">Coach</h2>
               <CoachPanel
                 prompt={prompt}

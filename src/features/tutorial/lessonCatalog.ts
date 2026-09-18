@@ -19,13 +19,13 @@ export const BEGINNER_PATH: ReadonlyArray<Lesson> = [
     ],
     steps: [
       { kind: "explain", id: "shape-intro", title: "One round, start to finish", highlight: "deal", body: [
-        "Cribbage is a two-player race to 121 points, played in rounds. Each round has six parts: the deal, the discard, the starter, the play, the show, and the crib.",
+        "Cribbage is a two-player race to 121 points, played in rounds. Each round has five parts: the deal, the discard, the starter, the play, and the show. The crib is counted last during the show.",
         "Rather than list them, the next screen deals two whole hands in front of you, one card and one decision at a time. Nothing is asked of you — press the button to see the next thing happen.",
         "Watch for one thing in particular. Between the first hand and the second, the deal passes over, and with it the crib and the order of counting.",
       ] },
       { kind: "round-demo", id: "shape-demo", scriptIds: ["demo-hand-1", "demo-hand-2"] },
       { kind: "recap", id: "shape-recap", concepts: ["round-flow", "count-order"], body: [
-        "A round runs deal, discard, starter, play, show, crib.",
+        "A round runs deal, discard, starter, play, and show. The crib is counted last in the show.",
         "The non-dealer counts first, then the dealer, then the crib. The crib belongs to whoever dealt.",
         "The deal alternates, so both of those jobs swap every hand.",
       ] },

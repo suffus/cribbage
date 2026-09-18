@@ -184,7 +184,7 @@ function Cribbage( {deck } : {deck? : Deck}  ) {
     </div>
     <div className='commitCrib'>
     { !gated && ["starting", "showing", "ending"].includes( gameState ) && <div className="btn-row"><Button variant="warning" onClick={ start }>Start The Round!</Button> <Button variant="outline-light" onClick={quit}>Quit!</Button></div> }
-    { !gated && gameState === "selection" && <div className="btn-row"><Button variant="warning" onClick={ playerDiscard }> Select for Crib</Button>  <Button variant="outline-light" onClick={ autoSelect } disabled={ game.playerHand.hand.length !== 6 }> Auto Select </Button></div> }
+    { !gated && gameState === "selection" && <div className="btn-row"><Button variant="warning" onClick={ playerDiscard } disabled={ game.playerHand.hand.filter( (c) => c.selected ).length !== 2 }> Select for Crib</Button>  <Button variant="outline-light" onClick={ autoSelect } disabled={ game.playerHand.hand.length !== 6 }> Auto Select </Button></div> }
     </div>
     </div>
   )

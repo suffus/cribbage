@@ -1,4 +1,4 @@
-import { CribbageGame, GameAction, explainPegPlay, scoreHand } from '../../app/game'
+import { CribbageGame, GameAction, explainPegPlay, scoreHand, type PegPlayResult } from '../../app/game'
 import { SCORE_REASON_COPY } from '../../app/scoreCopy'
 import { FixedDeck } from './fixedDeck'
 import type { RoundLogEntry } from './guidedRound'
@@ -56,6 +56,35 @@ function toPCard(card: { suit: PCard["suit"]; rank: PCard["rank"] }): PCard {
   return { suit: card.suit, rank: card.rank }
 }
 
+function named(who: DemoOwner): { they: string; score: string } {
+  return who === "you"
+    ? { they: "You", score: "you score" }
+    : { they: "They", score: "they score" }
+}
+
+/** Coach copy for a pegging play — names who scored and why, instead of
+ *  leaving the opening "you lead" checkpoint on screen for the whole play. */
+function pegScoreCoach(who: DemoOwner, result: PegPlayResult): string | undefined {
+  if (result.events.length === 0) {
+    return undefined
+  }
+  const w = named(who)
+  return result.events.map((event) => {
+    switch (event.category) {
+      case "run":
+        return `${w.they} scored ${event.points} points for a run. A run does not have to be laid in order, but the cards must be consecutive ranks.`
+      case "fifteen":
+        return `${w.they} scored 2 points for a fifteen — the cards in the play now add to 15.`
+      case "thirty-one":
+        return `The count is 31, so that scores 2 points. The next card starts a new sequence of the play, and the count will reset to 0.`
+      case "pair":
+        return `${w.they} scored ${event.points} points for a pair — the last cards played are the same rank.`
+      default:
+        return `${w.they} scored ${event.points} points.`
+    }
+  }).join(" ")
+}
+
 export class RoundDemo {
   private readonly scripts: readonly [RoundScript, RoundScript]
   private readonly deckCode: string
@@ -84,6 +113,13 @@ export class RoundDemo {
    *  "board" beat (R6/R7) knows whether to boot hand 2 or finish the demo. */
   private pendingFinish = false
   private done = false
+  /** After the last pegging card, last-card has already scored but the
+   *  sequence and its count stay on screen for that beat. */
+  private heldCount: number | null = null
+  private holdFinalSequence = false
+  /** After the last pegging count, pause once to say the show is next
+   *  before the hands appear. */
+  private pendingShowIntro = false
 
   constructor(scriptIds: readonly [string, string], deckCode: string = "rc") {
     const resolved = scriptIds.map((id) => ROUND_SCRIPTS[id])
@@ -114,7 +150,7 @@ export class RoundDemo {
       trick: this.trick.map((t) => ({ card: t.card, by: t.by })),
       lastTrick: this.lastTrick.map((t) => ({ card: t.card, by: t.by })),
       lastTrickReason: this.lastTrickReason,
-      count: this.game.playingHand.sum(),
+      count: this.heldCount ?? this.game.playingHand.sum(),
       dealer: this.scripts[this.handIndex].dealer === "player" ? "you" : "opponent",
       scores: {
         player: this.carriedScores.player + this.game.scores.player,
@@ -179,6 +215,9 @@ export class RoundDemo {
     this.pendingFinish = false
     this.playerPlayIndex = 0
     this.opponentPlayIndex = 0
+    this.heldCount = null
+    this.holdFinalSequence = false
+    this.pendingShowIntro = false
     this.coach = this.checkpointFor("deal") ?? "Watch the cards go out."
   }
 
@@ -225,9 +264,23 @@ export class RoundDemo {
           idxRef.i += 1
         }
         this.logScore(next, label)
-      } else if (next.action === "his-nibs" || next.action === "last-card") {
+      } else if (next.action === "his-nibs") {
         const inner = this.game.doAction(next)
         this.applyProduced(inner, [], { i: 0 })
+      } else if (next.action === "last-card") {
+        // Hold a 31 on screen for its own beat: the count stays 31 and the
+        // cards stay current. The reset is applied on the next advance,
+        // when last-card is taken from the queue.
+        if (this.game.playingHand.sum() === 31) {
+          this.queue.push(next)
+        } else {
+          // End of the play: score the last-card point now, but keep the
+          // finished sequence and its count on screen for this beat.
+          this.heldCount = this.game.playingHand.sum()
+          this.holdFinalSequence = true
+          const inner = this.game.doAction(next)
+          this.applyProduced(inner, [], { i: 0 })
+        }
       } else if (next.action === "start-round") {
         // Never expected mid-hand; the engine's own round-end -> start-round
         // chain is intentionally not followed (D2/D3) — a fresh CribbageGame
@@ -369,7 +422,9 @@ export class RoundDemo {
       case "play-card":
         this.stage = "pegging"
         this.phase = "pegging"
-        this.coach = note ?? this.checkpointFor("pegging") ?? "Watch the count."
+        // Do not fall back to the opening "you lead" checkpoint — that
+        // belongs on the lead only, not on every later card.
+        this.coach = note ?? `The count is now ${this.heldCount ?? this.game.playingHand.sum()}.`
         break
       case "show-non-dealer":
         this.stage = "show"
@@ -424,6 +479,14 @@ export class RoundDemo {
       }
       return
     }
+    if (this.pendingShowIntro) {
+      this.pendingShowIntro = false
+      this.beatIndex += 1
+      this.stage = "pegging"
+      this.phase = "pegging"
+      this.coach = "Neither player has any more cards to play. The game is now entering the show, and the hands will now be counted."
+      return
+    }
     let guard = 0
     while (this.queue.length > 0 && guard++ < 5000) {
       const action = this.queue.shift() as GameAction
@@ -435,6 +498,7 @@ export class RoundDemo {
         this.resolveNeed(action)
         continue
       }
+      const lastCardCount = action.action === "last-card" ? this.game.playingHand.sum() : null
       const pegResult = action.action === "play-card" && action.cards[0]
         ? explainPegPlay(this.game.playingHand.hand, action.cards[0])
         : null
@@ -451,20 +515,39 @@ export class RoundDemo {
         this.fail("The demonstration reached an unexpected end.")
         return
       }
-      if (action.action === "play-card" && this.game.playingHand.hand.length === 0 && this.trick.length > 0) {
+      if (action.action === "last-card" && this.trick.length > 0 && !this.holdFinalSequence) {
         this.lastTrick = [...this.trick]
-        this.lastTrickReason = pegResult && pegResult.newCount === 31
+        this.lastTrickReason = lastCardCount === 31
           ? "The count reached 31, so it resets to 0."
           : "Neither player could play, so the count resets to 0."
+        this.trick = []
+      } else if (action.action === "play-card" && this.game.playingHand.hand.length === 0 && this.trick.length > 0 && !this.holdFinalSequence) {
+        this.lastTrick = [...this.trick]
+        this.lastTrickReason = "Neither player could play, so the count resets to 0."
         this.trick = []
       }
       if (this.isBeatAction(action)) {
         this.beatIndex += 1
-        // R4: reaching 31 exactly is worth calling out explicitly, in
-        // addition to the generic pegging checkpoint the script provides.
-        const note = action.action === "play-card" && pegResult?.newCount === 31
-          ? "Reaching exactly 31 scores 2 points for the player who played that card, and the count resets to 0 for the next cards."
-          : undefined
+        let note: string | undefined
+        if (action.action === "play-card") {
+          const who: DemoOwner = action.subaction === "player" ? "you" : "opponent"
+          if (this.holdFinalSequence) {
+            const w = named(who)
+            note = `${w.they} played the last card of the play, so ${w.score} 1 point for the last card. The count is ${this.heldCount}.`
+            this.pendingShowIntro = true
+          } else if (pegResult && pegResult.events.length > 0) {
+            note = pegScoreCoach(who, pegResult)
+          } else if (this.lastTrick.length > 0 && this.trick.length === 1) {
+            note = who === "you"
+              ? "You lead the second sequence because it is your turn — they played the last card."
+              : "They lead the second sequence because it is their turn — you played the last card."
+          } else if (this.trick.length === 1 && this.lastTrick.length === 0) {
+            note = this.checkpointFor("pegging")
+              ?? (who === "you"
+                ? "You lead, because you are not the dealer."
+                : "They lead, because they are not the dealer.")
+          }
+        }
         this.finishBeat(action, note)
         return
       }

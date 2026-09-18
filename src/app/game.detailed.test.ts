@@ -9,7 +9,7 @@ import {
   scoreHandDetailed,
 } from './game'
 import type { ScoringCategory, ScoringGroup } from './game'
-import { SCORE_REASON_COPY } from './scoreCopy'
+import { SCORE_REASON_COPY, scoreNotice } from './scoreCopy'
 
 const SUITS: Suit[] = ["hearts", "diamonds", "spades", "clubs"]
 const RANKS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13] as Rank[]
@@ -325,5 +325,10 @@ describe("S-E10 score copy covers categoryFor reasons", () => {
       expect(SCORE_REASON_COPY[reason]).toBeTruthy()
     }
     expect(SCORE_REASON_COPY["his-nibs"]).toMatch(/his heels \(also called his nibs\)/)
+  })
+
+  it("formats a score notice for the play toast", () => {
+    expect(scoreNotice("player", 2, "15")).toBe("You scored 2 for fifteen — 2")
+    expect(scoreNotice("opponent", 1, "the-last-card")).toBe("Your opponent scored 1 for the last card — 1")
   })
 })

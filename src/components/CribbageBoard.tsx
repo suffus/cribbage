@@ -1,3 +1,5 @@
+import { useEffect, useRef, useState } from 'react'
+
 class Peg {
   track : number
   currentPoint: number
@@ -41,12 +43,12 @@ type Point = {
 }
 
 function getPoints( x : number ) : Array<Point> {
-  const trackStartY = 580
-  const pitch = 12.68
+  const trackStartY = 580.43013
+  const pitch = 12.68307
   const topTrackY = trackStartY - 34 * pitch
   const greenTrackX = tracks[1]
-  const cX = 113.5
-  const cY = 142
+  const cX = 113.3858
+  const cY = 142.864
   const r2 = cX - greenTrackX
   const c2X = cX + r2/2
   const c2Y = trackStartY + pitch/2
@@ -63,37 +65,83 @@ function getPoints( x : number ) : Array<Point> {
   ]
 }
 
-const tracks=[21,42,63]
+/** First-hole centres from `Cribbage_Board.svg` (red, green, blue streets). */
+const tracks=[21.41719, 41.57474, 61.73228]
 const peggingPoints = tracks.map( (n) => getPoints( n ) )
-function CribbageBoard( {playerPeg, opponentPeg}: CBProps ) {
-  const trackStartY = 580
-  const cX = 113.5
-  const winPointY = 128
-  const getPegPoints = ( peg : Peg ) => {
-      const rV = [peg.currentPoint, peg.previousPoint].map( (n) => {
-        if( n > 0 ) {
-          if( n < 121 ) {
-            return peggingPoints[ peg.track ][n-1]
-          } else {
-            return {x: cX, y: winPointY}
-          }
-        } else {
-            return {x: tracks[peg.track], y: trackStartY + 25 }
-        }
-      } )
-      return rV
+const HOLE_MS = 80
+/** Native size of `Cribbage_Board.svg`. Overlay and image share this box
+ *  so the pegs stay circular and sit in the holes, not on the track edges. */
+const BOARD_VIEWBOX = "0 0 226.7716 680.31482"
+
+function holePoint(track: number, n: number): Point {
+  if (n > 0) {
+    if (n < 121) {
+      return peggingPoints[track][n - 1]
+    }
+    return { x: 113.3858, y: 128 }
   }
+  // The start street has two holes per track. Current sits in the front
+  // hole (closer to 1); the trailing peg sits in the rear hole.
+  return { x: tracks[track], y: n === 0 ? 604.45161 : 617.13469 }
+}
 
+function PegPair({ peg, fill }: { peg: Peg; fill: string }) {
+  const [travel, setTravel] = useState(peg.currentPoint)
+  const shownRef = useRef(peg.currentPoint)
+
+  useEffect(() => {
+    const from = shownRef.current
+    const to = Math.min(121, peg.currentPoint)
+    if (from === to) {
+      return
+    }
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    if (reduce || to < from) {
+      shownRef.current = to
+      setTravel(to)
+      return
+    }
+    let hole = from
+    let timer = 0
+    const tick = () => {
+      hole += 1
+      setTravel(hole)
+      if (hole < to) {
+        timer = window.setTimeout(tick, HOLE_MS)
+      } else {
+        shownRef.current = to
+      }
+    }
+    timer = window.setTimeout(tick, HOLE_MS)
+    return () => window.clearTimeout(timer)
+  }, [peg.currentPoint])
+
+  const front = holePoint(peg.track, travel)
+  const back = holePoint(peg.track, peg.previousPoint)
   return (
-      <div>
-      <img src="/img/Cribbage_Board.svg" alt="Cribbage board with 3 tracks"/>
-      <svg style={ {position:"absolute", top:0, left:0} } width={300} height={800}>
-      { getPegPoints( playerPeg ).map( (pt, idx) => <circle key={`player-${idx}`} cx={pt.x} cy={pt.y} r={5.5} fill='blue' />) }
-      { getPegPoints( opponentPeg ).map( (pt, idx) => <circle key={`opponent-${idx}`} cx={pt.x} cy={pt.y} r={5.5} fill='red' />) }
-      </svg>
-      </div>
+    <>
+      <circle className="board-peg" cx={front.x} cy={front.y} r={6} fill={fill} stroke="#1a1a1a" strokeWidth={0.7} />
+      <circle className="board-peg" cx={back.x} cy={back.y} r={6} fill={fill} stroke="#1a1a1a" strokeWidth={0.7} />
+    </>
   )
+}
 
+function CribbageBoard( {playerPeg, opponentPeg}: CBProps ) {
+  return (
+    <div className="cribbage-board cribbage-board--horizontal">
+      <div className="cribbage-board-rotator">
+        <img src="/img/Cribbage_Board.svg" alt="Cribbage board with 3 tracks"/>
+        <svg
+          className="cribbage-board-pegs"
+          viewBox={BOARD_VIEWBOX}
+          preserveAspectRatio="xMidYMid meet"
+        >
+          <PegPair peg={playerPeg} fill="blue" />
+          <PegPair peg={opponentPeg} fill="red" />
+        </svg>
+      </div>
+    </div>
+  )
 }
 
 export { CribbageBoard, Peg }

@@ -42,7 +42,7 @@ describe("RoundDemo", () => {
     expect(demo.view().log.some((e) => e.who === "you" && e.points === 2)).toBe(true)
   })
 
-  it("shows every pegging card with its owner and resets the count after 31", () => {
+  it("shows every pegging card with its owner and holds 31 before the next sequence starts", () => {
     const demo = new RoundDemo(["demo-hand-1", "demo-hand-2"])
     const asPairs = (arr: ReadonlyArray<{ card: { suit: string; rank: number }; by: string }>) =>
       arr.map((t) => `${t.by} ${t.card.suit[0]}${t.card.rank}`)
@@ -51,23 +51,77 @@ describe("RoundDemo", () => {
       demo.advance()
     }
     let view = demo.view()
-    expect(asPairs(view.lastTrick)).toEqual(["you d6", "opponent h8", "you c7", "opponent s3", "you s5", "opponent c2"])
-    expect(view.lastTrickReason).toMatch(/31/)
-    // R4: the coach explains the 2-point score and the reset, not just the log.
+    // The 31 is still the current sequence — count 31, cards not yet dulled —
+    // so the learner sees the score before the reset.
+    expect(asPairs(view.trick)).toEqual(["you d6", "opponent h8", "you c7", "opponent s3", "you s5", "opponent c2"])
+    expect(view.lastTrick).toEqual([])
+    expect(view.count).toBe(31)
     expect(view.coach).toMatch(/scores 2 points/i)
-    expect(view.coach).toMatch(/resets to 0/i)
+    expect(view.coach).toMatch(/new sequence/i)
+    expect(view.coach).toMatch(/reset to 0/i)
 
-    // The last two plays of the hand.
-    demo.advance()
+    // The next card starts a new sequence: first trick is now previous
+    // (dulled), and the count is the four just played.
     demo.advance()
     view = demo.view()
-    expect(asPairs(view.lastTrick)).toEqual(["you h4", "opponent d8"])
-    expect(view.lastTrickReason).not.toMatch(/31/)
+    expect(asPairs(view.lastTrick)).toEqual(["you d6", "opponent h8", "you c7", "opponent s3", "you s5", "opponent c2"])
+    expect(view.lastTrickReason).toMatch(/31/)
+    expect(asPairs(view.trick)).toEqual(["you h4"])
+    expect(view.count).toBe(4)
+    expect(view.coach).toMatch(/lead the second sequence/i)
+    expect(view.coach).toMatch(/your turn/i)
+    expect(view.coach).toMatch(/they played the last card/i)
+
+    // The last play of the hand: keep the sequence and its count, and say
+    // that the last card scores 1.
+    demo.advance()
+    view = demo.view()
+    expect(asPairs(view.lastTrick)).toEqual(["you d6", "opponent h8", "you c7", "opponent s3", "you s5", "opponent c2"])
+    expect(asPairs(view.trick)).toEqual(["you h4", "opponent d8"])
+    expect(view.count).toBe(12)
+    expect(view.stage).toBe("pegging")
+    expect(view.coach).toMatch(/last card/i)
+    expect(view.coach).toMatch(/they score 1 point/i)
+    expect(view.coach).toMatch(/count is 12/i)
+    expect(view.coach).not.toMatch(/you lead, because you are not the dealer/i)
+
+    // After that count, one more pegging beat introduces the show.
+    demo.advance()
+    view = demo.view()
+    expect(view.stage).toBe("pegging")
+    expect(view.count).toBe(12)
+    expect(asPairs(view.trick)).toEqual(["you h4", "opponent d8"])
+    expect(view.coach).toMatch(/entering the show/i)
+    expect(view.coach).toMatch(/hands will now be counted/i)
+  })
+
+  it("names a pegging run when it scores, and does not keep the lead advice up", () => {
+    const demo = new RoundDemo(["demo-hand-1", "demo-hand-2"])
+    // 12 deals + 1 discard + 1 starter + 1 lead = 15 beats.
+    for (let i = 0; i < 15; i++) {
+      demo.advance()
+    }
+    expect(demo.view().coach).toMatch(/you lead/i)
+    expect(demo.view().count).toBe(6)
+
+    demo.advance()
+    expect(demo.view().count).toBe(14)
+    expect(demo.view().coach).toMatch(/count is now 14/i)
+    expect(demo.view().coach).not.toMatch(/you lead/i)
+
+    // 6-8-7 is a run of three for the learner.
+    demo.advance()
+    const view = demo.view()
+    expect(view.count).toBe(21)
+    expect(view.coach).toMatch(/you scored 3 points for a run/i)
+    expect(view.coach).toMatch(/consecutive/i)
+    expect(view.coach).not.toMatch(/you lead/i)
   })
 
   it("reveals all three hands' cards together at the count, but their totals one at a time", () => {
     const demo = new RoundDemo(["demo-hand-1", "demo-hand-2"])
-    for (let i = 0; i < 22; i++) {
+    // 12 deals + 1 discard + 1 starter + 8 plays + 1 show-intro = 23, then the show.
+    for (let i = 0; i < 23; i++) {
       demo.advance()
     }
     demo.advance()
