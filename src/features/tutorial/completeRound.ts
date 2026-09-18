@@ -39,10 +39,12 @@ export function completeRound(scriptId: string): { ok: boolean; reason?: string 
     if (view.awaiting === "play-card") {
       const legal = view.playerHand.find((card) => {
         const live = specToCard([card.suit, card.rank])
-        return explainPegPlay(
-          view.playingSequence.map((c) => specToCard([c.suit, c.rank])),
-          live,
-        ).legal
+        // A held 31 is still on screen, but the next card starts a new
+        // sequence — legality is against an empty count, not the finished 31.
+        const sequence = view.count === 31
+          ? []
+          : view.playingSequence.map((c) => specToCard([c.suit, c.rank]))
+        return explainPegPlay(sequence, live).legal
       })
       if (!legal) {
         return { ok: false, reason: `no legal play at count ${view.count}` }

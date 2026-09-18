@@ -75,6 +75,9 @@ export class GuidedRound {
   private lastTrickReason = ""
   private pendingOpponentPlay: GameAction | null = null
   private opponentTurnReleased = false
+  /** After a play to 31, keep that sequence and count on screen until the
+   *  next card starts a new sequence. The engine has already reset. */
+  private heldThirtyOne = false
 
   constructor(script: RoundScript, deckCode: string = "rc") {
     this.script = script
@@ -96,9 +99,11 @@ export class GuidedRound {
       playerHandIds: this.game.playerHand.hand.map(cardKey),
       opponentCardCount: this.game.opponentHand.hand.length,
       opponentHand: revealShow ? this.game.savedOpponentHand.hand.map(toPCard) : [],
-      playingSequence: this.game.playingHand.hand.map(toPCard),
+      playingSequence: this.heldThirtyOne
+        ? [...this.trickCards]
+        : this.game.playingHand.hand.map(toPCard),
       playingSequenceOwners: [...this.playOwners],
-      count: this.game.playingHand.sum(),
+      count: this.heldThirtyOne ? 31 : this.game.playingHand.sum(),
       starter: this.game.starter ? toPCard(this.game.starter) : null,
       crib: revealCrib ? this.game.crib.hand.map(toPCard) : [],
       scores: { player: this.game.scores.player, opponent: this.game.scores.opponent },
@@ -218,6 +223,7 @@ export class GuidedRound {
     this.lastTrickReason = ""
     this.pendingOpponentPlay = null
     this.opponentTurnReleased = false
+    this.heldThirtyOne = false
     this.pump([new GameAction("start-round")])
   }
 
@@ -283,6 +289,14 @@ export class GuidedRound {
     while (this.queue.length > 0 && guard++ < 5000) {
       const action = this.queue.shift() as GameAction
       const countBefore = this.game.playingHand.sum()
+      if (this.heldThirtyOne && action.action === "play-card" && this.trickCards.length > 0) {
+        this.lastTrick = [...this.trickCards]
+        this.lastTrickOwners = [...this.playOwners]
+        this.lastTrickReason = "The count reached 31, so it resets to 0."
+        this.trickCards = []
+        this.playOwners = []
+        this.heldThirtyOne = false
+      }
       if (action.action === "start-round" && this.complete) {
         continue
       }
@@ -342,13 +356,17 @@ export class GuidedRound {
         return
       }
       if (this.game.playingHand.hand.length === 0 && this.trickCards.length > 0) {
-        this.lastTrick = [...this.trickCards]
-        this.lastTrickOwners = [...this.playOwners]
-        this.lastTrickReason = countBefore === 31
-          ? "That made 31 — 2 points. The count resets to 0."
-          : `Nobody could play past ${countBefore}. The last card scores 1. The count resets to 0.`
-        this.trickCards = []
-        this.playOwners = []
+        if (action.action === "last-card" && countBefore === 31) {
+          this.heldThirtyOne = true
+        } else {
+          this.lastTrick = [...this.trickCards]
+          this.lastTrickOwners = [...this.playOwners]
+          this.lastTrickReason = countBefore === 31
+            ? "That made 31 — 2 points. The count resets to 0."
+            : `Nobody could play past ${countBefore}. The last card scores 1. The count resets to 0.`
+          this.trickCards = []
+          this.playOwners = []
+        }
       }
       this.maybePauseAfter(action)
       if (this.awaiting === "acknowledge") {
@@ -379,7 +397,9 @@ export class GuidedRound {
         if (!this.opponentTurnReleased) {
           this.pendingOpponentPlay = action
           this.awaiting = "opponent-play"
-          this.coach = "Their turn. Press \u201cLet them play\u201d when you are ready."
+          this.coach = this.heldThirtyOne
+            ? "The count is 31, so that scores 2 points. The next card starts a new sequence of the play, and the count will reset to 0."
+            : "Their turn. Press \u201cLet them play\u201d when you are ready."
           return true
         }
         this.opponentTurnReleased = false
@@ -404,7 +424,9 @@ export class GuidedRound {
         return false
       }
       this.awaiting = "play-card"
-      this.coach = this.checkpointFor("pegging") ?? "Choose a card to play."
+      this.coach = this.heldThirtyOne
+        ? "The count is 31, so that scores 2 points. The next card starts a new sequence of the play, and the count will reset to 0."
+        : (this.checkpointFor("pegging") ?? "Choose a card to play.")
       return true
     }
     if (action.action === "need-starter-card") {

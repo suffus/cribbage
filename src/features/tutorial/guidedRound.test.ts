@@ -286,13 +286,26 @@ describe("second-round (dealer: player) — S-G2, S-G4", () => {
       beforeBust.playingSequence.map((c) => specToCard([c.suit, c.rank] as [never, never])),
       specToCard(["spades", 2] as [never, never]),
     ).legal).toBe(false)
-    // The legal ace makes exactly 31.
+    // The legal ace makes exactly 31 — hold that count on screen with the
+    // sequence still current, so the learner sees the 2 points before reset.
     const scoring = round.submitPlay("AH")
     expect(scoring.ok).toBe(true)
     expect(scoring.message).toMatch(/31/)
+    const held = round.view()
+    expect(held.count).toBe(31)
+    expect(held.lastTrick).toHaveLength(0)
+    expect(held.playingSequence.length).toBeGreaterThan(0)
+    expect(held.coach).toMatch(/scores 2 points/i)
+    expect(held.coach).toMatch(/new sequence/i)
+    expect(held.coach).toMatch(/reset to 0/i)
+    // The next action starts a new sequence; the finished 31 is then previous.
     view = runToNextChoice(round)
-    round.submitPlay("2S")
-    view = runToNextChoice(round)
+    expect(view.lastTrick.length).toBeGreaterThan(0)
+    expect(view.lastTrickReason).toMatch(/31/)
+    if (view.awaiting === "play-card") {
+      round.submitPlay("2S")
+      view = runToNextChoice(round)
+    }
     expect(view.awaiting).toBe("count-hand")
   })
 

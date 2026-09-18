@@ -61,6 +61,29 @@ describe("RoundDemoView", () => {
     await user.click(screen.getByRole("button", { name: /play the next card/i }))
   })
 
+  it("holds the 31 count on its own step, then shows the next card at 4", () => {
+    const demo = new RoundDemo(["demo-hand-1", "demo-hand-2"])
+    // 12 deals + 1 discard + 1 starter + 6 plays (the 31) = 20 beats.
+    for (let i = 0; i < 20; i++) {
+      demo.advance()
+    }
+    const { rerender } = render(<RoundDemoView demo={demo} view={demo.view()} onChange={() => {}} />)
+    expect(screen.getByText("Count: 31")).toBeInTheDocument()
+    expect(screen.queryByRole("list", { name: /the previous trick/i })).not.toBeInTheDocument()
+
+    demo.advance()
+    rerender(<RoundDemoView demo={demo} view={demo.view()} onChange={() => {}} />)
+    expect(screen.getByText("Count: 4")).toBeInTheDocument()
+    expect(screen.getByRole("list", { name: /the previous trick/i })).toBeInTheDocument()
+    expect(screen.getByText(/the count reached 31/i)).toBeInTheDocument()
+
+    demo.advance()
+    rerender(<RoundDemoView demo={demo} view={demo.view()} onChange={() => {}} />)
+    expect(screen.getByText("Count: 12")).toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: /the play \(or pegging\)/i })).toBeInTheDocument()
+    expect(screen.getByRole("list", { name: /on the table/i })).toBeInTheDocument()
+  })
+
   it("relabels the button to count the first hand once pegging finishes (R1)", () => {
     const demo = new RoundDemo(["demo-hand-1", "demo-hand-2"])
     // 12 deals + 1 discard + 1 starter + 8 plays = 22 beats — every card played.
@@ -77,8 +100,8 @@ describe("RoundDemoView", () => {
 
   it("shows the three hands face up at the count, each with its own explanation underneath (R5)", () => {
     const demo = new RoundDemo(["demo-hand-1", "demo-hand-2"])
-    // 12 deals + 1 discard + 1 starter + 8 plays + 1 show-non-dealer = 23 beats.
-    for (let i = 0; i < 23; i++) {
+    // 12 deals + 1 discard + 1 starter + 8 plays + 1 show-intro + 1 show-non-dealer = 24 beats.
+    for (let i = 0; i < 24; i++) {
       demo.advance()
     }
     const { container } = render(<RoundDemoView demo={demo} view={demo.view()} onChange={() => {}} />)

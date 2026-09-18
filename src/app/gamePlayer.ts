@@ -1,4 +1,5 @@
 import { CribbageGame, GameAction, PlayerEvent, GameEvent, getBestHand, playBestCard1, rankDiscards, rankPlays } from './game'
+import { scoreNotice } from './scoreCopy'
 import { Card, StdDeck } from './entities'
 import { GamePlayingState, UserGamePlay, initialState } from '../features/game/gameSlice'
 import { DIFFICULTY_WEIGHTS, pickWeightedIndex, type Difficulty } from './difficulty'
@@ -97,6 +98,9 @@ export class GamePlayer {
           console.log( "Pegging points:", pga )
           pga[2]=pga[1]; pga[1]=pga[0]; pga[0] += action.score
           this.stateUpdate[ action.subaction + "Peg" ] = {points: pga}
+          if (action.subaction === "player" || action.subaction === "opponent") {
+            this.stateUpdate.message = scoreNotice(action.subaction, action.score, action.reason)
+          }
         }
         break
       case "game-win":

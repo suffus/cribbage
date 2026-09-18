@@ -1,3 +1,4 @@
+import { PlayNotice } from '../PlayNotice'
 import { ScoreExplanation } from '../ScoreExplanation'
 import { HandScoringExercise } from './HandScoringExercise'
 import { SelectableHand } from './SelectableHand'
@@ -83,9 +84,18 @@ export function GuidedRoundView({ round, view, step, dispatch, onChange }: Guide
     : []
   const countComplete = countRequired.length > 0
     && countRequired.every((g) => step.found.includes(g.id))
+  const lastScore = [...view.log].reverse().find((entry) => entry.points > 0)
+  const scoreToast = lastScore
+    ? `${lastScore.who === "you" ? "You" : "Your opponent"} scored ${lastScore.points} for ${lastScore.text}`
+    : ""
 
   return (
     <div>
+      <PlayNotice
+        message={scoreToast}
+        noticeId={lastScore ? Number(lastScore.id.replace(/\D/g, "")) || 0 : 0}
+        variant="inline"
+      />
       <div className="training-notice">
         <strong>Training deal.</strong> {view.trainingNotice} You can restart this round at any time —
         and refreshing the page will restart it from the deal.
@@ -157,7 +167,8 @@ export function GuidedRoundView({ round, view, step, dispatch, onChange }: Guide
             mode="radio"
             cards={view.playerHand.map((card) => {
               const id = cardKey(specToCard([card.suit, card.rank]))
-              const over = view.count + specToCard([card.suit, card.rank]).value > 31
+              const running = view.count === 31 ? 0 : view.count
+              const over = running + specToCard([card.suit, card.rank]).value > 31
               return {
                 card,
                 cardId: id,

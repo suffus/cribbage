@@ -5,9 +5,10 @@ export const PLAY_NOTICE_HOLD_MS = 3200
 export type PlayNoticeProps = {
   message: string
   noticeId: number
+  variant?: "play" | "inline"
 }
 
-export function PlayNotice({ message, noticeId }: PlayNoticeProps) {
+export function PlayNotice({ message, noticeId, variant = "play" }: PlayNoticeProps) {
   const [text, setText] = useState("")
   const [visible, setVisible] = useState(false)
   const hideRef = useRef<number | null>(null)
@@ -43,7 +44,7 @@ export function PlayNotice({ message, noticeId }: PlayNoticeProps) {
 
   return (
     <div
-      className={`playNotice${visible ? " is-visible" : ""}`}
+      className={`playNotice playNotice--${variant}${visible ? " is-visible" : ""}`}
       role="status"
       aria-live="polite"
     >

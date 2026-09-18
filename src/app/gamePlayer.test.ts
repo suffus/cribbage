@@ -103,6 +103,16 @@ describe("GamePlayer scaffold wiring", () => {
     expect(gamePlayerSource).toMatch(/playBestCard1/)
   })
 
+  it("publishes a score notice and moves the peg when points are scored", () => {
+    const state = { ...initialState }
+    const act = new GameAction("score", "player")
+    act.score = 2
+    act.reason = "15"
+    thePlayer.handleAction(state, act)
+    expect(thePlayer.stateUpdate.message).toBe("You scored 2 for fifteen — 2")
+    expect((thePlayer.stateUpdate.playerPeg as { points: number[] }).points[0]).toBe(2)
+  })
+
   it("publishes a snapshot on game-win using the incoming state difficulty", () => {
     thePlayer.game.breakdown.player.hand = 8
     thePlayer.game.breakdown.player.total = 8

@@ -115,5 +115,6 @@ describe("TutorialShell", () => {
     renderShell(0)
     expect(screen.getByRole("heading", { name: "Coach" })).toBeInTheDocument()
     expect(screen.getAllByRole("status")).toHaveLength(1)
+    expect(document.querySelector(".tutorial-coach--sticky")).toBeInTheDocument()
   })
 })

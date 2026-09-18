@@ -10,7 +10,7 @@ describe("RoundMap", () => {
     expect(screen.getByText(/^Starter/)).toBeInTheDocument()
     expect(screen.getByText("Pegging")).toBeInTheDocument()
     expect(screen.getByText("Show")).toBeInTheDocument()
-    expect(screen.getByText("Crib")).toBeInTheDocument()
+    expect(screen.queryByText("Crib")).not.toBeInTheDocument()
     expect(screen.getByText(/current phase/i)).toBeInTheDocument()
     const current = screen.getByText("Pegging").closest("li")
     expect(current).toHaveAttribute("aria-current", "step")
@@ -20,5 +20,12 @@ describe("RoundMap", () => {
     render(<RoundMap current="pegging" />)
     expect(screen.getAllByText(/— completed/)).toHaveLength(3)
     expect(screen.getByText(/— current phase/)).toBeInTheDocument()
+  })
+
+  it("treats the crib count as part of the show", () => {
+    render(<RoundMap current="crib" />)
+    expect(screen.queryByText("Crib")).not.toBeInTheDocument()
+    const show = screen.getByText("Show").closest("li")
+    expect(show).toHaveAttribute("aria-current", "step")
   })
 })

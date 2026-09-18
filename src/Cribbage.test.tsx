@@ -270,3 +270,48 @@ describe("show-phase score breakdown", () => {
     expect(screen.queryByRole("button", { name: /how .* counted/i })).not.toBeInTheDocument()
   })
 })
+
+describe("discard selection", () => {
+  it("keeps Select for Crib disabled until exactly two cards are selected", async () => {
+    thePlayer.resetForNewSession()
+    const game = thePlayer.game
+    game.stage = "selection"
+    const cards = [
+      new Card("hearts", 2),
+      new Card("clubs", 3),
+      new Card("diamonds", 4),
+      new Card("spades", 5),
+      new Card("hearts", 6),
+      new Card("clubs", 7),
+    ]
+    cards.forEach((c) => { c.isFaceUp = true })
+    game.playerHand = new Hand(cards)
+    const store = configureStore({
+      reducer: { game: gameReducer },
+      preloadedState: {
+        game: {
+          ...initialState,
+          difficulty: "easy" as const,
+          difficultyChosen: true,
+          nextScheduledAction: -1,
+        },
+      },
+    })
+    const user = userEvent.setup()
+    render(
+      <Provider store={store}>
+        <MemoryRouter>
+          <Cribbage deck={new StdDeck("rc")} />
+        </MemoryRouter>
+      </Provider>
+    )
+    const discard = screen.getByRole("button", { name: "Select for Crib" })
+    expect(discard).toBeDisabled()
+
+    await user.click(screen.getByAltText("hearts2"))
+    expect(discard).toBeDisabled()
+
+    await user.click(screen.getByAltText("clubs3"))
+    expect(discard).toBeEnabled()
+  })
+})

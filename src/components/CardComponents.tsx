@@ -145,9 +145,6 @@ function PlayerHand( { deck, hand, cardClick, top, left, cardSize, spacing }: PH
 
   const cardCallback = function( c: Card, idx: number ): ()=>void {
     const rv = () =>  {
-      if( cardClick !== undefined ) {
-        cardClick( c, idx )
-      }
       let totalSelected = 0
       let firstCardSelected : Card | null = null
 
@@ -168,6 +165,11 @@ function PlayerHand( { deck, hand, cardClick, top, left, cardSize, spacing }: PH
       c.selected = !c.selected
       setSelectedCards( hand.filter( x => x.selected ) )
       console.log( "Slected cards are: ", selectedCards)
+      // Notify the parent after the hand's selected flags change so the
+      // discard button can enable/disable from the live count.
+      if( cardClick !== undefined ) {
+        cardClick( c, idx )
+      }
     }
     return rv;
   }
