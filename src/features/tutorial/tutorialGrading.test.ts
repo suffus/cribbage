@@ -79,9 +79,9 @@ describe("tutorialGrading", () => {
     const accepted = gradeDiscard(scenario, bestKey.split("-"))
     expect(accepted.accepted).toBe(true)
     expect(accepted.plain.length).toBeGreaterThan(0)
-    const five = cardKey(specToCard(["spades", 5]))
-    const jack = cardKey(specToCard(["diamonds", 11]))
-    const poor = gradeDiscard(scenario, [five, jack])
+    const seven = cardKey(specToCard(["clubs", 7]))
+    const eight = cardKey(specToCard(["diamonds", 8]))
+    const poor = gradeDiscard(scenario, [seven, eight])
     expect(poor.accepted).toBe(false)
   })
 

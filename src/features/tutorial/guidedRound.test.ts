@@ -239,6 +239,48 @@ describe("first-round (dealer: opponent) — S-G2, S-G4", () => {
     // The point of RM-8: this hand's own score, not the cumulative game score.
     expect(view.showScores.opponentHand).not.toBe(view.scores.opponent)
   })
+
+  it("shows the dealer's hand and then the crib above each count, with the coach explaining", () => {
+    const round = new GuidedRound(script)
+    round.submitDiscard(["5S", "6C"])
+    let view = runToNextChoice(round)
+    for (const cardId of ["7H", "JD", "QH", "2S"]) {
+      round.submitPlay(cardId)
+      view = runToNextChoice(round)
+    }
+    expect(view.awaiting).toBe("count-hand")
+    expect(view.shownHand).toBeNull()
+    round.completeCount()
+    view = round.view()
+    expect(view.awaiting).toBe("acknowledge")
+    expect(view.shownHand?.title).toBe("Their hand")
+    expect(view.shownHand?.isCrib).toBe(false)
+    expect(view.shownHand?.hand).toHaveLength(4)
+    expect(view.shownHand?.total).toBe(scoreHand(
+      view.shownHand!.hand.map((c) => specToCard([c.suit, c.rank] as [never, never])),
+      specToCard([view.starter!.suit, view.starter!.rank] as [never, never]),
+      false,
+    ))
+    expect(view.coach).toMatch(/they are the dealer/i)
+    expect(view.coach).toMatch(/their hand scores/i)
+    expect(view.crib).toHaveLength(0)
+
+    round.acknowledge()
+    view = round.view()
+    expect(view.awaiting).toBe("acknowledge")
+    expect(view.shownHand?.title).toBe("Their crib")
+    expect(view.shownHand?.isCrib).toBe(true)
+    expect(view.shownHand?.hand).toEqual([
+      { suit: "hearts", rank: 1 },
+      { suit: "clubs", rank: 3 },
+      { suit: "spades", rank: 5 },
+      { suit: "clubs", rank: 6 },
+    ])
+    expect(view.crib).toHaveLength(4)
+    expect(view.coach).toMatch(/the crib is theirs/i)
+    expect(view.coach).toMatch(/their crib scores/i)
+    expect(view.coach).toMatch(/shown, not counted by you/i)
+  })
 })
 
 describe("second-round (dealer: player) — S-G2, S-G4", () => {
@@ -348,5 +390,33 @@ describe("second-round (dealer: player) — S-G2, S-G4", () => {
       true,
     )
     expect(cribScore).toBe(4)
+  })
+
+  it("shows the opponent's hand before the learner counts, with the coach explaining it", () => {
+    const round = new GuidedRound(script)
+    round.submitDiscard(["5C", "6C"])
+    let view = runToNextChoice(round)
+    for (const cardId of ["7H", "JD", "AH", "2S"]) {
+      if (view.awaiting === "play-card") {
+        const result = round.submitPlay(cardId)
+        expect(result.ok).toBe(true)
+      }
+      view = round.view()
+      let guard = 0
+      while ((view.awaiting === "opponent-play" || (view.awaiting === "acknowledge" && !view.shownHand)) && guard++ < 20) {
+        if (view.awaiting === "acknowledge") {
+          round.acknowledge()
+        } else {
+          round.letOpponentPlay()
+        }
+        view = round.view()
+      }
+    }
+    expect(view.awaiting).toBe("acknowledge")
+    expect(view.shownHand?.title).toBe("Their hand")
+    expect(view.shownHand?.hand).toHaveLength(4)
+    expect(view.shownHand?.isCrib).toBe(false)
+    expect(view.coach).toMatch(/they count first/i)
+    expect(view.coach).toMatch(/their hand scores/i)
   })
 })

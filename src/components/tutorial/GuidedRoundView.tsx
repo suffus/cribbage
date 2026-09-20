@@ -109,15 +109,16 @@ export function GuidedRoundView({ round, view, step, dispatch, onChange }: Guide
         </div>
       ) : null}
 
-      {view.starter && view.awaiting !== "count-hand" ? (
+      {view.starter && view.awaiting !== "count-hand" && !view.shownHand ? (
         // While counting a hand, `HandScoringExercise` below renders its own
         // "Starter" fieldset — a *selectable* one, since the starter counts
         // as a fifth card and can be part of a fifteen, run, or flush. Also
         // showing this static, non-interactive copy at the same time gave two
         // boxes both labelled "Starter" on screen — one inert, one the card
         // the learner actually needs to click (e.g. a run that only becomes
-        // a run once the starter is included). Suppress the static one here
-        // so there is exactly one, and it is the clickable one.
+        // a run once the starter is included). The shown-hand block (dealer
+        // or crib) includes the starter the same way, so suppress it there
+        // too. Only one "Starter" box on screen at a time.
         <SelectableHand
           deck={deck}
           label="Starter"
@@ -236,6 +237,47 @@ export function GuidedRoundView({ round, view, step, dispatch, onChange }: Guide
         </>
       ) : null}
 
+      {view.shownHand ? (
+        // Dealer's hand or the crib: faces first, then the count that belongs
+        // to those five cards (starter + four), matching the demonstration
+        // show. The learner does not count these — the coach explains them.
+        <div className="round-demo-show-hand">
+          <div className="round-demo-show-cards">
+            {view.shownHand.starter ? (
+              <SelectableHand
+                deck={deck}
+                label="Starter"
+                mode="none"
+                cards={[{
+                  card: view.shownHand.starter,
+                  cardId: cardKey(specToCard([view.shownHand.starter.suit, view.shownHand.starter.rank])),
+                  state: "idle",
+                }]}
+              />
+            ) : null}
+            <span className="round-demo-plus" aria-hidden="true">+</span>
+            <SelectableHand
+              deck={deck}
+              label={view.shownHand.title}
+              mode="none"
+              cards={view.shownHand.hand.map((card) => ({
+                card,
+                cardId: cardKey(specToCard([card.suit, card.rank])),
+                state: "idle",
+              }))}
+            />
+          </div>
+          <ScoreExplanation
+            title={view.shownHand.title}
+            hand={[...view.shownHand.hand]}
+            starter={view.shownHand.starter}
+            isCrib={view.shownHand.isCrib}
+            total={view.shownHand.total}
+            variant="list"
+          />
+        </div>
+      ) : null}
+
       {view.awaiting === "acknowledge" ? (
         <button type="button" className="btn btn-warning" onClick={() => { round.acknowledge(); refresh() }}>
           Continue
@@ -248,27 +290,6 @@ export function GuidedRoundView({ round, view, step, dispatch, onChange }: Guide
         playerScore={view.scores.player}
         opponentScore={view.scores.opponent}
       />
-
-      {view.opponentHand.length > 0 ? (
-        <ScoreExplanation
-          title="Opponent"
-          hand={[...view.opponentHand]}
-          starter={view.starter}
-          isCrib={false}
-          total={view.showScores.opponentHand}
-          variant="list"
-        />
-      ) : null}
-      {view.crib.length > 0 && view.awaiting !== "count-hand" ? (
-        <ScoreExplanation
-          title="Crib"
-          hand={[...view.crib]}
-          starter={view.starter}
-          isCrib
-          total={view.showScores.crib}
-          variant="list"
-        />
-      ) : null}
 
       <h3 className="tutorial-subhead">This round so far</h3>
       <ul className="roundlog">
