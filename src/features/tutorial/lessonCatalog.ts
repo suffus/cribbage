@@ -57,7 +57,7 @@ export const BEGINNER_PATH: ReadonlyArray<Lesson> = [
       { kind: "explain", id: "crib-six-to-four", title: "Six to four", body: ["You are dealt six cards and keep four. The two you throw go to the crib. If they deal, the crib is theirs. If you deal, it is yours."] },
       { kind: "discard-practice", id: "crib-theirs", scenarioId: "discard-theirs", hintPolicy: "on-request" },
       { kind: "discard-practice", id: "crib-yours", scenarioId: "discard-yours", hintPolicy: "on-request" },
-      { kind: "recap", id: "crib-recap", concepts: ["crib-ownership", "discard-keep", "discard-crib-risk"], body: ["Keep the cards that work together. Because it is their crib, avoid feeding a pair of fives. When the crib is yours, the same six cards can want a different throw."] },
+      { kind: "recap", id: "crib-recap", concepts: ["crib-ownership", "discard-keep", "discard-crib-risk"], body: ["Keep the cards that work together. Because it is their crib, avoid feeding a pair of twos. When the crib is yours, the same six cards can want a different throw."] },
     ],
   },
   {

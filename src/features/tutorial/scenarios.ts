@@ -43,8 +43,8 @@ const H = {
   ] as const,
   discard: [
     "Think about whose crib this is before you throw.",
-    "A pair of fives is a gift in someone else's crib.",
-    "Keep the run. Put the two cards that do not belong in the crib.",
+    "A pair of twos is a gift in someone else's crib.",
+    "A pair that does not mix with the rest still scores in the crib.",
   ] as const,
   peg: [
     "A card is legal only when its value plus the count is 31 or less.",
@@ -160,35 +160,37 @@ export const DISCARD_SCENARIOS: Readonly<Record<string, DiscardScenario>> = {
   "discard-theirs": {
     id: "discard-theirs",
     concepts: ["discard-keep", "discard-crib-risk", "crib-ownership"],
-    hand: [["spades", 5], ["diamonds", 5], ["clubs", 6], ["hearts", 7], ["diamonds", 11], ["hearts", 12]],
+    hand: [["spades", 2], ["hearts", 2], ["clubs", 7], ["diamonds", 8], ["spades", 9], ["hearts", 10]],
     isPlayerCrib: false,
     prompt: "This is the opponent's crib, so the two cards you throw work against you. Weigh three things before you choose: the score your four cards keep, what your two cards are worth in their crib, and whether your four cards give you a spread of ranks to peg with. Press Show the math after you confirm to see the first two as numbers.",
     acceptTopN: 3,
     reasons: {
-      "JD-QH": "Best throw. Keeping 5-5-J-Q would score a shade more in your hand, but a jack and a queen are exactly the raw material their crib wants. Keeping 5-5-6-7 concedes less, and the six and seven give you mid-range ranks to peg with instead of cards that hand the opponent easy fifteens.",
-      "6C-7H": "Accepted, and this is the strongest keep on hand value alone. But six and seven are touching cards, and touching cards in their crib build runs for them. You are also left leading fives and ten-value cards, which is awkward pegging.",
+      "10H-2S": "Best throw. The pair of twos does not mix with 7-8-9-10, so throwing them looks tidy — but a pair in their crib still scores for them. Throwing a two and the ten keeps 2-7-8-9: a run of three and 7+8, and their crib gets two cards that do not work together.",
+      "10H-2H": "Accepted — same idea as the off-suit two and the ten. Same-suit cards are a little more useful in a crib, so throwing the two of spades with the ten is a shade cleaner.",
+      "2H-2S": "Accepted, and this is the strongest keep on hand value alone — 7-8-9-10 is a run of four plus 7+8. But the pair does nothing with those cards, and in their crib it scores for them. A two and the ten is the safer throw.",
     },
     hints: [
       "Start with your own hand. Which four cards hold the most scoring shapes on their own?",
-      "Now look at the two you would let go. This is their crib, so whatever those two are worth comes off your total.",
-      "Throw the jack and the queen. Keeping 5-5-6-7 gives their crib almost nothing, and its connected ranks peg better than a fistful of ten-value cards.",
+      "Now look at the two you would let go. This is their crib, so whatever those two are worth comes off your total. A pair that does not mix with the rest is still a pair in their crib.",
+      "Throw a two and the ten. Keeping 2-7-8-9 is almost as strong as the run of four, and you do not feed them the pair.",
     ] as const,
   },
   "discard-yours": {
     id: "discard-yours",
     concepts: ["discard-keep", "crib-ownership"],
-    hand: [["spades", 5], ["diamonds", 5], ["clubs", 6], ["hearts", 7], ["diamonds", 11], ["hearts", 12]],
+    hand: [["spades", 2], ["hearts", 2], ["clubs", 7], ["diamonds", 8], ["spades", 9], ["hearts", 10]],
     isPlayerCrib: true,
     prompt: "The same six cards, but the crib is yours now, so the two cards you throw come back to you. Your hand numbers have not changed at all — only the sign on the crib has. Weigh the score your four cards keep, what your two cards add to your crib, and whether your four cards peg well. Press Show the math after you confirm.",
     acceptTopN: 3,
     reasons: {
-      "6C-7H": "Best throw. Two touching cards are productive in a crib you own, and 5-5-J-Q is already the higher-scoring keep. Notice the reversal: this was only the second-best throw when the crib belonged to the opponent, and nothing changed but the crib term.",
-      "JD-QH": "Accepted, and it was the best throw into their crib. But a jack and a queen do less in your own crib than a touching six and seven, so here it comes second.",
+      "2H-2S": "Best throw. The pair of twos does not help 7-8-9-10, and in a crib you own a pair is a gift. Notice the reversal: this was only third when the crib belonged to the opponent, and nothing changed but whose crib it is.",
+      "10H-2S": "Accepted, and it was the best throw into their crib. Here the pair of twos comes back to you, so keeping the run of four and banking the pair is stronger.",
+      "10H-2H": "Accepted — a two and the ten was the right idea in their crib. In yours, the pair of twos is the throw that comes back as points.",
     },
     hints: [
       "Your hand numbers are exactly what they were last time. Only the crib term has changed sign.",
-      "The crib is yours, so ask which two cards do the most work once they arrive there.",
-      "Throw the six and the seven. Touching cards build runs in a crib you own, and 5-5-J-Q is the higher-scoring keep anyway.",
+      "The crib is yours, so a pair that does not help your four cards is exactly what you want to throw.",
+      "Throw the pair of twos. They do not interact with 7-8-9-10, and a pair in a crib you own scores for you.",
     ] as const,
   },
 }

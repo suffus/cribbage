@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { describeDiscardComparison, describeGroup, describeMissingCategory, describePegOutcome, TRAINING_DEAL_NOTICE } from './tutorialCopy'
+import { describeDiscardComparison, describeGroup, describeMissingCategory, describePegOutcome, describeShownCount, TRAINING_DEAL_NOTICE } from './tutorialCopy'
 import { rankDiscards } from '../../app/game'
 import type { ScoringGroup } from '../../app/game'
 import { DISCARD_SCENARIOS } from './scenarios'
@@ -17,6 +17,18 @@ describe("tutorialCopy", () => {
     expect(describeGroup(group)).toBe("5 + K = 15 for 2")
     expect(describeMissingCategory("pair")).toMatch(/pair/)
     expect(describeMissingCategory("nobs")).toMatch(/nobs/)
+  })
+
+  it("explains a shown hand by its total and groups", () => {
+    expect(describeShownCount("Their hand", { total: 0, groups: [] }))
+      .toBe("Their hand scores nothing — 0 points.")
+    expect(describeShownCount("Their crib", {
+      total: 4,
+      groups: [
+        { id: "a", category: "fifteen", cardIds: ["AH", "6C", "8D"], points: 2, label: "A + 6 + 8 = 15" },
+        { id: "b", category: "fifteen", cardIds: ["AH", "3C", "5S", "6C"], points: 2, label: "A + 3 + 5 + 6 = 15" },
+      ],
+    })).toBe("Their crib scores 4: A + 6 + 8 = 15 for 2 and A + 3 + 5 + 6 = 15 for 2.")
   })
 
   it("describes legal and illegal peg outcomes", () => {

@@ -4,6 +4,24 @@ export function describeGroup(g: ScoringGroup): string {
   return `${g.label} for ${g.points}`
 }
 
+/** Coach line for a hand the learner watches rather than counts — the dealer's
+ *  hand or the crib in a coached-round show. Names the total and every group. */
+export function describeShownCount(
+  title: string,
+  result: { total: number; groups: ReadonlyArray<ScoringGroup> },
+): string {
+  if (result.groups.length === 0) {
+    return `${title} scores nothing — 0 points.`
+  }
+  const bits = result.groups.map(describeGroup)
+  const list = bits.length === 1
+    ? bits[0]
+    : bits.length === 2
+      ? `${bits[0]} and ${bits[1]}`
+      : `${bits.slice(0, -1).join(", ")}, and ${bits[bits.length - 1]}`
+  return `${title} scores ${result.total}: ${list}.`
+}
+
 export function describeMissingCategory(c: ScoringCategory): string {
   switch (c) {
     case "fifteen":

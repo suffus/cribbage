@@ -17,7 +17,7 @@ describe("DiscardExercise", () => {
   it("Confirm is disabled until exactly two cards are selected, and dispatches submit", () => {
     const dispatch = vi.fn()
     const scenario = DISCARD_SCENARIOS["discard-theirs"]
-    render(<DiscardExercise scenario={scenario} step={{ ...emptyStep, selected: ["JD"] }} dispatch={dispatch} />)
+    render(<DiscardExercise scenario={scenario} step={{ ...emptyStep, selected: ["2S"] }} dispatch={dispatch} />)
     expect(screen.getByRole("button", { name: /confirm two discards/i })).toBeDisabled()
   })
 
@@ -40,7 +40,7 @@ describe("DiscardExercise", () => {
         locked
       />,
     )
-    await user.click(screen.getByRole("button", { name: /jack of diamonds/i }))
+    await user.click(screen.getByRole("button", { name: /two of spades/i }))
     expect(dispatch).not.toHaveBeenCalled()
   })
 
@@ -60,9 +60,9 @@ describe("DiscardExercise", () => {
       )
     }
     render(<Host />)
-    // The scenario's best throw (rank 1) is jack of diamonds + queen of hearts.
-    await user.click(screen.getByRole("button", { name: /jack of diamonds/i }))
-    await user.click(screen.getByRole("button", { name: /queen of hearts/i }))
+    // The scenario's best throw (rank 1) is two of spades + ten of hearts.
+    await user.click(screen.getByRole("button", { name: /two of spades/i }))
+    await user.click(screen.getByRole("button", { name: /ten of hearts/i }))
     await user.click(screen.getByRole("button", { name: /confirm two discards/i }))
     expect(screen.getByTestId("status")).toHaveTextContent("complete")
     // The authored reason itself is rendered by CoachPanel (fed from
@@ -74,10 +74,10 @@ describe("DiscardExercise", () => {
 
   it("ranks the same throw differently depending on whose crib it is", () => {
     const dispatch = vi.fn()
-    const step = { ...emptyStep, selected: ["JD", "QH"], attempts: 1, feedback: { tone: "good" as const, text: "x" } }
+    const step = { ...emptyStep, selected: ["2S", "10H"], attempts: 1, feedback: { tone: "good" as const, text: "x" } }
     render(<DiscardExercise scenario={DISCARD_SCENARIOS["discard-theirs"]} step={step} dispatch={dispatch} />)
     expect(screen.getByText(/ranks 1 of 15 for their crib/i)).toBeInTheDocument()
     render(<DiscardExercise scenario={DISCARD_SCENARIOS["discard-yours"]} step={step} dispatch={dispatch} />)
-    expect(screen.getByText(/ranks 2 of 15 for your crib/i)).toBeInTheDocument()
+    expect(screen.getByText(/ranks 3 of 15 for your crib/i)).toBeInTheDocument()
   })
 })

@@ -39,6 +39,7 @@ function baseView(overrides: Partial<View>): View {
     scores: { player: 0, opponent: 0 },
     pegPoints: { player: [0, -1, -1], opponent: [0, -1, -1] },
     countTask: null,
+    shownHand: null,
     showScores: { opponentHand: -1, crib: -1 },
     lastTrick: [],
     lastTrickOwners: [],
@@ -303,6 +304,56 @@ describe("GuidedRoundView", () => {
     render(<LiveHost />)
     await user.click(screen.getByRole("button", { name: /show me the count/i }))
     expect(screen.getByRole("button", { name: /^continue$/i })).toBeInTheDocument()
+  })
+
+  it("shows the dealer's hand above its count, then Continue", () => {
+    const round = fakeRound()
+    const view = baseView({
+      awaiting: "acknowledge",
+      starter: { suit: "diamonds", rank: 8 },
+      shownHand: {
+        title: "Their hand",
+        hand: [
+          { suit: "diamonds", rank: 4 }, { suit: "hearts", rank: 10 },
+          { suit: "clubs", rank: 9 }, { suit: "clubs", rank: 13 },
+        ],
+        starter: { suit: "diamonds", rank: 8 },
+        isCrib: false,
+        total: 3,
+      },
+    })
+    render(<GuidedRoundView round={round} view={view} step={emptyStep} dispatch={vi.fn()} onChange={vi.fn()} />)
+    const theirHand = screen.getByRole("group", { name: /their hand/i })
+    const total = screen.getByLabelText("Total 3")
+    const block = total.closest(".round-demo-show-hand")
+    expect(block).toContainElement(theirHand)
+    expect(within(block as HTMLElement).getByRole("group", { name: /^starter$/i })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /^continue$/i })).toBeInTheDocument()
+    // The standalone starter above the show is suppressed — only the one
+    // sitting with this hand, so the count reads as starter + four cards.
+    expect(screen.getAllByRole("group", { name: /^starter$/i })).toHaveLength(1)
+  })
+
+  it("shows the crib above its count when that hand is being explained", () => {
+    const round = fakeRound()
+    const view = baseView({
+      awaiting: "acknowledge",
+      starter: { suit: "diamonds", rank: 8 },
+      shownHand: {
+        title: "Their crib",
+        hand: [
+          { suit: "hearts", rank: 1 }, { suit: "clubs", rank: 3 },
+          { suit: "spades", rank: 5 }, { suit: "clubs", rank: 6 },
+        ],
+        starter: { suit: "diamonds", rank: 8 },
+        isCrib: true,
+        total: 4,
+      },
+    })
+    render(<GuidedRoundView round={round} view={view} step={emptyStep} dispatch={vi.fn()} onChange={vi.fn()} />)
+    const crib = screen.getByRole("group", { name: /their crib/i })
+    const total = screen.getByLabelText("Total 4")
+    expect(total.closest(".round-demo-show-hand")).toContainElement(crib)
   })
 
   it("offers Let them play while the opponent is to act, and nothing else advances", async () => {

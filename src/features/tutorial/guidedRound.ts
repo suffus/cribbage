@@ -1,14 +1,25 @@
 import { cardKey } from '../../app/entities'
-import { CribbageGame, GameAction, explainPegPlay, scoreHand } from '../../app/game'
+import { CribbageGame, GameAction, explainPegPlay, scoreHand, scoreHandDetailed } from '../../app/game'
 import type { GameStage } from '../../app/game'
 import { SCORE_REASON_COPY } from '../../app/scoreCopy'
-import { TRAINING_DEAL_NOTICE } from './tutorialCopy'
+import { describeShownCount, TRAINING_DEAL_NOTICE } from './tutorialCopy'
 import { FixedDeck } from './fixedDeck'
 import { specToCard } from './tutorialCards'
 import type { CardSpec, RoundPhase, RoundScript } from './tutorialTypes'
 import type { PCard } from '../game/gameSlice'
 
 export type RoundLogEntry = { id: string; who: "you" | "opponent"; text: string; points: number }
+
+/** A hand the learner watches during the show (dealer or crib) rather than
+ *  counting themselves. Cards and total are ready before Continue, so the
+ *  count can sit under the faces instead of appearing only after the beat. */
+export type GuidedShownHand = {
+  title: string
+  hand: ReadonlyArray<PCard>
+  starter: PCard | null
+  isCrib: boolean
+  total: number
+}
 
 export type GuidedRoundView = {
   phase: RoundPhase
@@ -32,6 +43,9 @@ export type GuidedRoundView = {
   scores: { player: number; opponent: number }
   pegPoints: { player: number[]; opponent: number[] }
   countTask: { hand: ReadonlyArray<PCard>; starter: PCard | null; isCrib: boolean; total: number } | null
+  /** Dealer's hand or crib being shown this beat — cards plus the count that
+   *  belongs under them. Null while the learner is counting their own hand. */
+  shownHand: GuidedShownHand | null
   /** Each hand's own score for the show breakdowns (RM-8) — `-1` before that
    *  hand/crib has been revealed, computed straight from the cards rather
    *  than read from the game's cumulative `scores`, which does not equal a
@@ -65,6 +79,7 @@ export class GuidedRound {
   private opponentPlayIndex = 0
   private pending: GameAction | null = null
   private countTask: GuidedRoundView["countTask"] = null
+  private shownHand: GuidedShownHand | null = null
   private acknowledged = new Set<RoundPhase>()
   private errorReason = ""
   private resumePending = false
@@ -87,7 +102,7 @@ export class GuidedRound {
 
   view(): GuidedRoundView {
     const revealShow = this.game.stage === "showing" || this.complete
-    const revealCrib = this.game.scores.crib >= 0
+    const revealCrib = this.game.scores.crib >= 0 || this.shownHand?.isCrib === true || this.complete
     return {
       phase: this.phaseOf(),
       stage: this.game.stage,
@@ -112,6 +127,7 @@ export class GuidedRound {
         opponent: [...this.pegPoints.opponent],
       },
       countTask: this.countTask,
+      shownHand: this.shownHand ? { ...this.shownHand, hand: [...this.shownHand.hand] } : null,
       showScores: {
         opponentHand: revealShow ? scoreHand([...this.game.savedOpponentHand.hand], this.game.starter, false) : -1,
         crib: revealCrib ? scoreHand([...this.game.crib.hand], this.game.starter, true) : -1,
@@ -139,6 +155,12 @@ export class GuidedRound {
     if (!this.pending && this.game.starter) {
       this.acknowledged.add("starter")
     }
+    // Drop the current pause so pump() does not return on the leftover
+    // `awaiting === "acknowledge"` after applying this action — otherwise
+    // the next show beat (dealer → crib) stays queued and Continue looks
+    // like a no-op.
+    this.awaiting = "done"
+    this.shownHand = null
     if (this.pending) {
       const action = this.pending
       this.pending = null
@@ -213,6 +235,7 @@ export class GuidedRound {
     this.opponentPlayIndex = 0
     this.pending = null
     this.countTask = null
+    this.shownHand = null
     this.acknowledged = new Set()
     this.errorReason = ""
     this.resumePending = false
@@ -455,7 +478,11 @@ export class GuidedRound {
         this.pauseCount("player", false, action, this.checkpointFor("show") ?? "You count first.")
         return true
       }
-      this.pauseAck(action, "The opponent counts first.")
+      this.pauseShown(
+        action,
+        this.shownForOpponentHand(),
+        this.checkpointFor("show") ?? "The opponent counts first.",
+      )
       return true
     }
     if (action.action === "show-dealer") {
@@ -463,7 +490,11 @@ export class GuidedRound {
         this.pauseCount("player", false, action, "You count second.")
         return true
       }
-      this.pauseAck(action, "The dealer counts next.")
+      this.pauseShown(
+        action,
+        this.shownForOpponentHand(),
+        "They are the dealer, so they count next.",
+      )
       return true
     }
     if (action.action === "show-crib") {
@@ -471,16 +502,52 @@ export class GuidedRound {
         this.pauseCount("crib", true, action, this.checkpointFor("crib") ?? "The crib is yours.")
         return true
       }
-      this.pauseAck(action, this.checkpointFor("crib") ?? "The crib is theirs.")
+      this.pauseShown(
+        action,
+        this.shownForCrib(),
+        this.checkpointFor("crib") ?? "The crib is theirs.",
+      )
       return true
     }
     if (action.action === "his-nibs" && !this.acknowledged.has("starter")) {
-      this.pending = action
-      this.awaiting = "acknowledge"
-      this.coach = this.checkpointFor("starter") ?? SCORE_REASON_COPY["his-nibs"]
+      this.pauseAck(action, this.checkpointFor("starter") ?? SCORE_REASON_COPY["his-nibs"])
       return true
     }
     return false
+  }
+
+  private shownForOpponentHand(): GuidedShownHand {
+    const hand = this.game.savedOpponentHand.hand
+    const starter = this.game.starter
+    return {
+      title: "Their hand",
+      hand: hand.map(toPCard),
+      starter: starter ? toPCard(starter) : null,
+      isCrib: false,
+      total: scoreHand(hand, starter, false),
+    }
+  }
+
+  private shownForCrib(): GuidedShownHand {
+    const hand = this.game.crib.hand
+    const starter = this.game.starter
+    return {
+      title: this.script.dealer === "player" ? "Your crib" : "Their crib",
+      hand: hand.map(toPCard),
+      starter: starter ? toPCard(starter) : null,
+      isCrib: true,
+      total: scoreHand(hand, starter, true),
+    }
+  }
+
+  private pauseShown(action: GameAction, shown: GuidedShownHand, intro: string): void {
+    const cards = shown.hand.map((c) => specToCard([c.suit, c.rank]))
+    const cut = shown.starter ? specToCard([shown.starter.suit, shown.starter.rank]) : undefined
+    this.shownHand = shown
+    this.countTask = null
+    this.pending = action
+    this.awaiting = "acknowledge"
+    this.coach = `${intro} ${describeShownCount(shown.title, scoreHandDetailed(cards, cut, shown.isCrib))}`
   }
 
   private pauseCount(
@@ -497,6 +564,7 @@ export class GuidedRound {
       isCrib,
       total: scoreHand(hand, starter, isCrib),
     }
+    this.shownHand = null
     this.pending = action
     this.awaiting = "count-hand"
     this.coach = coach
@@ -505,12 +573,14 @@ export class GuidedRound {
   private pauseAck(action: GameAction, coach: string): void {
     this.pending = action
     this.awaiting = "acknowledge"
+    this.shownHand = null
     this.coach = coach
   }
 
   private maybePauseAfter(action: GameAction): void {
     if (action.action === "starter-card" && !this.acknowledged.has("starter") && this.game.starter?.rank !== 11) {
       this.awaiting = "acknowledge"
+      this.shownHand = null
       this.coach = this.checkpointFor("starter") ?? "The starter is turned."
     }
   }
